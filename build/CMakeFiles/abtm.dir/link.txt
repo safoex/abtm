@@ -1,0 +1,1 @@
+/usr/bin/c++  -g   CMakeFiles/abtm.dir/test.cpp.o CMakeFiles/abtm.dir/src/Memory.cpp.o CMakeFiles/abtm.dir/src/Node.cpp.o CMakeFiles/abtm.dir/src/Tree.cpp.o CMakeFiles/abtm.dir/src/TreeParser.cpp.o  -o abtm -lyaml-cpp 

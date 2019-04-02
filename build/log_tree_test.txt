@@ -1,0 +1,6 @@
+ticked main_sequence RUNNING
+ticked send_start SUCCESS
+ticked correctly_started SUCCESS
+ticked start_flight_error RUNNING
+ticked main_sequence SUCCESS
+ticked main FAILURE

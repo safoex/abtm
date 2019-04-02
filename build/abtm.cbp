@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6"/>
+	<Project>
+		<Option title="abtm"/>
+		<Option makefile_is_custom="1"/>
+		<Option compiler="gcc"/>
+		<Option virtualFolders="CMake Files\;"/>
+		<Build>
+			<Target title="all">
+				<Option working_dir="/home/safoex/Documents/abtm/build"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j12 -f &quot;/home/safoex/Documents/abtm/build/Makefile&quot;  VERBOSE=1 all"/>
+					<CompileFile command="/usr/bin/make -j12 -f &quot;/home/safoex/Documents/abtm/build/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j12 -f &quot;/home/safoex/Documents/abtm/build/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j12 -f &quot;/home/safoex/Documents/abtm/build/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="edit_cache">
+				<Option working_dir="/home/safoex/Documents/abtm/build"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j12 -f &quot;/home/safoex/Documents/abtm/build/Makefile&quot;  VERBOSE=1 edit_cache"/>
+					<CompileFile command="/usr/bin/make -j12 -f &quot;/home/safoex/Documents/abtm/build/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j12 -f &quot;/home/safoex/Documents/abtm/build/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j12 -f &quot;/home/safoex/Documents/abtm/build/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="rebuild_cache">
+				<Option working_dir="/home/safoex/Documents/abtm/build"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j12 -f &quot;/home/safoex/Documents/abtm/build/Makefile&quot;  VERBOSE=1 rebuild_cache"/>
+					<CompileFile command="/usr/bin/make -j12 -f &quot;/home/safoex/Documents/abtm/build/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j12 -f &quot;/home/safoex/Documents/abtm/build/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j12 -f &quot;/home/safoex/Documents/abtm/build/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="abtm">
+				<Option output="/home/safoex/Documents/abtm/build/abtm" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/safoex/Documents/abtm/build"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/home/safoex/Documents/abtm/src"/>
+					<Add directory="/usr/include/c++/7"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/7"/>
+					<Add directory="/usr/include/c++/7/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/7/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/7/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j12 -f &quot;/home/safoex/Documents/abtm/build/Makefile&quot;  VERBOSE=1 abtm"/>
+					<CompileFile command="/usr/bin/make -j12 -f &quot;/home/safoex/Documents/abtm/build/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j12 -f &quot;/home/safoex/Documents/abtm/build/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j12 -f &quot;/home/safoex/Documents/abtm/build/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="abtm/fast">
+				<Option output="/home/safoex/Documents/abtm/build/abtm" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/safoex/Documents/abtm/build"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/home/safoex/Documents/abtm/src"/>
+					<Add directory="/usr/include/c++/7"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/7"/>
+					<Add directory="/usr/include/c++/7/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/7/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/7/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j12 -f &quot;/home/safoex/Documents/abtm/build/Makefile&quot;  VERBOSE=1 abtm/fast"/>
+					<CompileFile command="/usr/bin/make -j12 -f &quot;/home/safoex/Documents/abtm/build/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j12 -f &quot;/home/safoex/Documents/abtm/build/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j12 -f &quot;/home/safoex/Documents/abtm/build/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+		</Build>
+		<Unit filename="/home/safoex/Documents/abtm/src/Memory.cpp">
+			<Option target="abtm"/>
+		</Unit>
+		<Unit filename="/home/safoex/Documents/abtm/src/Memory.h">
+			<Option target="abtm"/>
+		</Unit>
+		<Unit filename="/home/safoex/Documents/abtm/src/Node.cpp">
+			<Option target="abtm"/>
+		</Unit>
+		<Unit filename="/home/safoex/Documents/abtm/src/Node.h">
+			<Option target="abtm"/>
+		</Unit>
+		<Unit filename="/home/safoex/Documents/abtm/src/Tree.cpp">
+			<Option target="abtm"/>
+		</Unit>
+		<Unit filename="/home/safoex/Documents/abtm/src/Tree.h">
+			<Option target="abtm"/>
+		</Unit>
+		<Unit filename="/home/safoex/Documents/abtm/src/TreeParser.cpp">
+			<Option target="abtm"/>
+		</Unit>
+		<Unit filename="/home/safoex/Documents/abtm/src/TreeParser.h">
+			<Option target="abtm"/>
+		</Unit>
+		<Unit filename="/home/safoex/Documents/abtm/test.cpp">
+			<Option target="abtm"/>
+		</Unit>
+		<Unit filename="/home/safoex/Documents/abtm/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\"/>
+		</Unit>
+	</Project>
+</CodeBlocks_project_file>

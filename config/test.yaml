@@ -1,0 +1,81 @@
+common:
+  root_child: main
+  parameters:
+    online: 1
+
+variables:
+  input: ["error_code", "START_FLIGHT_ERROR", "cmd_flight_start_response", "start_tree"]
+  output_no_send_zero: ["cmd_flight_start", "cmd_emergency_land" ]
+
+set:
+  START_FLIGHT_ERROR: 5
+
+nodes:
+  global:
+    main:
+      type: parallel
+      children: [error_handler, main_sequence]
+
+    error_handler:
+      type: parallel
+      children: [start_flight_error]
+
+    start_flight_error:
+      type: sequence
+      children: [start_flight_error_if, start_flight_error_action, start_flight_error_sleep]
+
+    start_flight_error_if:
+      type: condition
+      S: error_code = START_FLIGHT_ERROR
+      R: default
+
+    start_flight_error_action:
+      type: action
+      assign:
+        cmd_emergency_land: 1
+
+    start_flight_error_sleep:
+      type: condition
+      R: default
+
+
+    main_sequence:
+      type: sequence
+      children: [on_start_tree, send_start, correctly_started]
+
+    on_start_tree:
+      type: condition
+      S: start_tree = 1
+      R: default
+
+    send_start:
+      type: selector
+      children: [if_send_start_done, send_start_action]
+
+    if_send_start_done:
+      type: condition
+      S: cmd_flight_start = 1
+      F: default
+
+    send_start_action:
+      type: action
+      assign:
+        cmd_flight_start: 1
+        cmd_flight_start_response: 0
+
+    correctly_started:
+      type: selector
+      children: [correctly_started_if, correctly_started_error_action]
+
+    correctly_started_if:
+      type: condition
+      S: cmd_flight_start_response > 0
+      F: cmd_flight_start_response < 0
+      R: default
+
+    correctly_started_error_action:
+      type: action
+      assign:
+        error_code: START_FLIGHT_ERROR
+
+

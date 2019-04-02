@@ -1,0 +1,77 @@
+digraph g {
+node [shape=rectangle, style=filled, color=white];
+"test"[label="->
+test", color=white];
+"test" -> "main";
+"main"[label="=
+main", color=white];
+"main" -> "error_handler";
+"main" -> "main_sequence";
+"error_handler"[label="=
+error_handler", color=white];
+"error_handler" -> "start_flight_error";
+"start_flight_error"[label="->
+start_flight_error", color=white];
+"start_flight_error" -> "start_flight_error_if";
+"start_flight_error" -> "start_flight_error_action";
+"start_flight_error" -> "start_flight_error_sleep";
+"start_flight_error_if"[label="start_flight_error_if
+S: error_code = START_FLIGHT_ERROR;
+R: default;
+", color=orange];
+"start_flight_error_action"[label="start_flight_error_action
+cmd_emergency_land := 1;
+", color=green];
+"start_flight_error_sleep"[label="start_flight_error_sleep
+R: default;
+", color=orange];
+"main_sequence"[label="->
+main_sequence", color=white];
+"main_sequence" -> "on_start_tree";
+"main_sequence" -> "send_start";
+"main_sequence" -> "correctly_started";
+"on_start_tree"[label="on_start_tree
+S: start_tree = 1;
+R: default;
+", color=orange];
+"send_start"[label="?
+send_start", color=white];
+"send_start" -> "if_send_start_done";
+"send_start" -> "send_start_action";
+"if_send_start_done"[label="if_send_start_done
+S: cmd_flight_start = 1;
+F: default;
+", color=orange];
+"send_start_action"[label="send_start_action
+cmd_flight_start := 1;
+cmd_flight_start_response := 0;
+", color=green];
+"correctly_started"[label="?
+correctly_started", color=white];
+"correctly_started" -> "correctly_started_if";
+"correctly_started" -> "correctly_started_error_action";
+"correctly_started_if"[label="correctly_started_if
+S: cmd_flight_start_response > 0;
+F: cmd_flight_start_response < 0;
+R: default;
+", color=orange];
+"correctly_started_error_action"[label="correctly_started_error_action
+error_code := START_FLIGHT_ERROR;
+", color=green];
+{ rank = same;
+"error_handler" -> "main_sequence"[style=invis];
+}
+{ rank = same;
+"start_flight_error_if" -> "start_flight_error_action" -> "start_flight_error_sleep"[style=invis];
+}
+{ rank = same;
+"on_start_tree" -> "send_start" -> "correctly_started"[style=invis];
+}
+{ rank = same;
+"if_send_start_done" -> "send_start_action"[style=invis];
+}
+{ rank = same;
+"correctly_started_if" -> "correctly_started_error_action"[style=invis];
+}
+
+}
