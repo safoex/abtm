@@ -1,7 +1,7 @@
 //
 // Created by safoex on 19.11.18.
 //
-#pragma once
+//#pragma once
 
 #include "Memory.h"
 #include "Node.h"
