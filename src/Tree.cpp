@@ -162,14 +162,10 @@ namespace bt {
     void Tree::add_base_node(std::string const &parent_name, bt::Node *node, Node::State where) {
         NodeInfo ni(node, parent_name);
         auto &pa = nodes[parent_name];
-        if(pa.node->node_class() == Node::SFRselector) {
-            auto pasfr_p = dynamic_cast<SFRselector*>(pa.node);
-            pasfr_p->set_child(node, where);
-        }
-        else {
-            auto paseq_p = dynamic_cast<Sequential*>(pa.node);
-            paseq_p->add_child(node);
-        }
+
+        auto paseq_p = dynamic_cast<Sequential*>(pa.node);
+        paseq_p->add_child(node);
+
         ni.order = nodes[parent_name].order;
         auto children = pa.node->get_children();
         for(size_t i = 0; i < children.size(); i++) {

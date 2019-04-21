@@ -5,7 +5,6 @@
 #ifndef BEHAVIOR_TREE_MEMORY_H
 #define BEHAVIOR_TREE_MEMORY_H
 
-#include "std_string.h"
 
 #include <unordered_map>
 #include <string>

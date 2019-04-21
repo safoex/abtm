@@ -4,8 +4,8 @@ common:
     online: 1
 
 variables:
-  input: ["error_code", "START_FLIGHT_ERROR", "cmd_flight_start_response", "start_tree"]
-  output_no_send_zero: ["cmd_flight_start", "cmd_emergency_land" ]
+  input: ["error_code", "START_FLIGHT_ERROR", "cmd_flight_start_response", "start_tree", "SIG_skip", "SIG_go"]
+  output_no_send_zero: ["cmd_flight_start", "cmd_emergency_land", "skip", "go" ]
 
 set:
   START_FLIGHT_ERROR: 5
@@ -41,12 +41,53 @@ nodes:
 
     main_sequence:
       type: sequence
-      children: [on_start_tree, send_start, correctly_started]
+      children: [on_start_tree, tree_body]
 
     on_start_tree:
       type: condition
       S: start_tree = 1
+      F: start_tree < 0
       R: default
+
+    tree_body:
+      type: skipper
+      children: [on_enter_tree, tree_exec]
+
+    on_enter_tree:
+      type: skipper
+      children: [on_skip, on_go]
+
+    on_skip:
+      type: sequence
+      children: [on_skip_if, on_skip_act]
+
+    on_skip_if:
+      type: condition
+      S: SIG_skip = 1
+      R: default
+
+    on_skip_act:
+      type: action
+      assign:
+        skip: 1
+
+    on_go:
+      type: sequence
+      children: [on_go_if, on_go_act]
+
+    on_go_if:
+      type: condition
+      S: SIG_go = 1
+      R: default
+
+    on_go_act:
+      type: action
+      assign:
+        go: 1
+
+    tree_exec:
+      type: sequence
+      children: [send_start, correctly_started]
 
     send_start:
       type: selector

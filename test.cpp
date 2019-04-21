@@ -20,4 +20,7 @@ int main() {
     std::ofstream test_results("output.yaml");
     test_results << tp.apply_samples("../config/input.yaml");
 
+    std::ofstream test_states("test_states.txt");
+    test_states << t.dot_tree_description(true);
+
 }
