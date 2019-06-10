@@ -6,7 +6,7 @@
 #define AR_BUILD_ROOT_TREEPARSER_H
 
 #include <string>
-#include <Tree.h>
+#include "Tree.h"
 #include <yaml-cpp/yaml.h>
 
 namespace bt {
@@ -50,6 +50,7 @@ namespace bt {
     };
 
     class TreeParser {
+        friend class BTTesting;
     protected:
         Store store;
         std::string file_;
@@ -70,12 +71,13 @@ namespace bt {
         void load_parameters(const YAML::Node &ye);
         std::unordered_set<std::string> get_extra_vars(std::unordered_set<std::string> const& vars);
     public:
-
         Tree::dict<int> parameters;
         TreeParser(Tree* tree, std::string const& file);
         void load();
         std::string apply_samples(std::string const& file);
         std::string get_graph_viz_description() const;
+        void load_changes_from_file(std::string const& file);
+        void load_changes_from_str(std::string const& str);
 
     };
 };

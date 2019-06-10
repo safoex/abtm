@@ -10,6 +10,7 @@
 #include "Memory.h"
 #include <list>
 #include <vector>
+#include <list>
 #include <functional>
 #include <iostream>
 
@@ -68,7 +69,7 @@ namespace bt {
         std::string state_var() const;
         Node::State state() const;
         bool hide_further; // visualization specific
-        virtual const std::vector<Node*>& get_children() const = 0;
+        virtual const std::list<Node*>& get_children() const = 0;
         virtual int children_size() const = 0;
         virtual NodeClass node_class() const = 0;
     };
@@ -79,14 +80,16 @@ namespace bt {
         const size_t children_limit = -1;
         static TickType call_table[FINAL_STATE_ENTRY+1][FINAL_TICK_TYPE_ENTRY];
     protected:
-        std::vector<Node*> children;
+        std::list<Node*> children;
     public:
         Sequential(std::string id, Memory<double>& vars, std::string classifier);
         void add_child(Node* child);
+        void insert_child(Node* child, std::string const& child_name, bool after);
+        void remove_child(std::string const& child_name);
         tick_return_type tick(TickType tick_type) override;
         Sequential& operator=(const Sequential& other);
         ~Sequential() override;
-        const std::vector<Node*>& get_children() const override;
+        const std::list<Node*>& get_children() const override;
         int children_size() const override;
         virtual State evaluate(TickType tick_type);
         virtual State return_state() = 0;
@@ -138,7 +141,7 @@ namespace bt {
     class NoChildNode : public Node {
     public:
         NoChildNode(std::string id, Memory<double>& vars,  std::string classifier);
-        const std::vector<Node*>& get_children() const override;
+        const std::list<Node*>& get_children() const override;
         int children_size() const override;
     };
 
@@ -168,8 +171,6 @@ namespace bt {
     };
 
 
-    class ConditionFabric;
-
     class Condition : public ActiveNode {
         friend class ConditionFabric;
     public:
@@ -189,7 +190,6 @@ namespace bt {
         NodeClass node_class() const override;
     };
 
-    class ActionFabric;
 
     class Action : public ActiveNode {
         friend class ActionFabric;

@@ -30,11 +30,13 @@ namespace bt {
             output.insert(name);
         }
 
-        var[name] = value;
 
-        if(sc == Scope::INNER) {
+        if(sc == Scope::INNER /*&& var[name] != value*/) {
             inner_changes.insert(name);
         }
+
+        var[name] = value;
+
 
         if(LOGGING)
             LOG_DEBUG("ar_bt_test: memory set " + name + " : " + std::to_string(value) );

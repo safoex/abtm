@@ -61,6 +61,7 @@ namespace bt {
         auto var_changed = memory.get_changes(Memory<double>::INNER);
         auto const& out_changes = memory.get_changes(Memory<double>::OUTPUT);
         var_changed.insert(out_changes.begin(), out_changes.end());
+
         strset2 cond_candidates;
         for(auto const& v: var_changed) {
             cond_candidates.insert(var_in_cond[v.first].begin(), var_in_cond[v.first].end());
@@ -148,6 +149,7 @@ namespace bt {
         }
         Tree::dict<double> output = memory.get_changes(Memory<double>::OUTPUT);
         memory.clear_changes(Memory<double>::OUTPUT);
+        memory.clear_changes(Memory<double>::INNER);
 //        if(!output.empty())
 //            DEBUG_PR("cb output: " << print_sample(output));
         if(need_to_lock)
@@ -168,11 +170,13 @@ namespace bt {
 
         ni.order = nodes[parent_name].order;
         auto children = pa.node->get_children();
-        for(size_t i = 0; i < children.size(); i++) {
-            if (children[i] == node) {
+        size_t i = 0;
+        for(auto it = children.begin(); it != children.end(); it++) {
+            if (*it == node) {
                 ni.order.push_back(i);
                 break;
             }
+            i++;
         }
         nodes[ni.id()] = ni;
     }
@@ -263,7 +267,11 @@ namespace bt {
         if(desc != "")
             gv_node_name += "\n" + desc;
         gv_node_name += "\"";
-        return {"\"" + n->id() + "\"", "\""+n->id()+"\"" + "[label=" +  gv_node_name + ", color=" + color + "];\n"};
+        std::string fontcolor = "black";
+        if(n->node_class() != Node::Action && n->node_class() != Node::Condition && desc == "RUNNING")
+            fontcolor = "red";
+        return {"\"" + n->id() + "\"", "\""+n->id()+"\"" + "[label=" +  gv_node_name + ", color=" + color
+                    + ", fontcolor=" + fontcolor + "];\n"};
 
     }
 
@@ -288,7 +296,7 @@ namespace bt {
         std::stack<Node*> dfs;
         Node* node = nodes[get_root_name()].node;
         dfs.push(node);
-        std::string constraints = "";
+        std::string constraints;
         while(!dfs.empty()) {
             auto n = dfs.top();
             dfs.pop();

@@ -3,7 +3,7 @@
 //
 
 #include "TreeParser.h"
-#include <Memory.cpp>
+#include "Memory.cpp"
 #include <queue>
 
 using namespace std;
@@ -540,11 +540,10 @@ namespace bt {
         std::string result;
         if(!samples["samples"]) {
             LOG_DEBUG("no samples provdided!");
-
         }
         else {
             for (auto const &p: samples["samples"]) {
-                result += apply_sample(p)  + "\n";
+                result += apply_sample(p)  + "-------------------------\n";
             }
         }
         return result;
@@ -554,5 +553,9 @@ namespace bt {
 
     std::string TreeParser::get_graph_viz_description() const {
         return tree->dot_tree_description();
+    }
+
+    void TreeParser::load_changes_from_str(std::string const &str) {
+
     }
 };

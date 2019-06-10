@@ -15,6 +15,7 @@ int main() {
 
     std::ofstream test_gv("test_gv_tree.txt");
     test_gv << t.dot_tree_description();
+    system("dot -Tpdf test_gv_tree.txt > tree.pdf");
 
     t.start();
     std::ofstream test_results("output.yaml");
@@ -22,5 +23,6 @@ int main() {
 
     std::ofstream test_states("test_states.txt");
     test_states << t.dot_tree_description(true);
+    system("dot -Tpdf test_states.txt > states.pdf");
 
 }

@@ -54,7 +54,6 @@ namespace bt{
         void add_node(std::string const& parent_name, Action* node, Node::State where = Node::SUCCESS);
         Memory<double>& get_memory();
         virtual dict<double> callback(dict<double> sample, bool need_to_lock = true);
-        bool set_root_name(std::string const& new_root_name); // can change if no nodes added
         std::string get_root_name();
         ~Tree();
         virtual bt::Tree::dict<double> start();
