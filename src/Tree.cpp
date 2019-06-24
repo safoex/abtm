@@ -117,7 +117,10 @@ namespace bt {
         for(auto const& c: cond_candidates) {
             auto p = nodes[c].node->tick();
             if(p.second == Node::TOPDOWN_RISE || p.second == Node::BOTTOMUP_RISE)
-                nodes_to_tick[nodes[nodes[c].parent]] = p.second;
+                if(nodes_to_tick.count(nodes[nodes[c].parent]))
+                    nodes_to_tick[nodes[nodes[c].parent]] = std::min(p.second, nodes_to_tick[nodes[nodes[c].parent]]);
+                else
+                    nodes_to_tick[nodes[nodes[c].parent]] = p.second;
         }
 
 
@@ -150,8 +153,9 @@ namespace bt {
         Tree::dict<double> output = memory.get_changes(Memory<double>::OUTPUT);
         memory.clear_changes(Memory<double>::OUTPUT);
         memory.clear_changes(Memory<double>::INNER);
-//        if(!output.empty())
+        if(!output.empty())// || sample.count("connection_lost"))
 //            DEBUG_PR("cb output: " << print_sample(output));
+            DEBUG_PR("--------------------------");
         if(need_to_lock)
             lock.unlock();
         return output;

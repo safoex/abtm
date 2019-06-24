@@ -517,7 +517,7 @@ namespace bt {
                 changes[v_name] = v_value;
             }
             catch(YAML::Exception &e) {
-                throw YAML::Exception(YAML::Mark::null_mark(), "ar_bt_test: error while initializing variables");
+                throw YAML::Exception(YAML::Mark::null_mark(), "ar_bt_test: sample rvalue is not double");
             }
         }
         auto out = tree->callback(changes);
