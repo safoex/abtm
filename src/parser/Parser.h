@@ -18,11 +18,14 @@
 namespace bt {
 
     class Parser {
-        dictOf<BaseParser&> parsers; // {scope e.g. "nodes", parser [...]}
+        dictOf<BaseParser*> parsers; // {scope e.g. "nodes", parser [...]}
         Builder builder;
+        std::string root_node;
+        std::vector<std::string> sort_parsers();
     public:
-        Parser();
-        void registerModule(std::string const& type, BaseParser& parser);
+        Parser(Builder builder);
+        Parser(Tree* tree);
+        void registerModule(std::string const& type, BaseParser *parser);
         void loadYamlFile(std::string const& filename);
         virtual ~Parser();
     };

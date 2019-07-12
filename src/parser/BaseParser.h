@@ -44,6 +44,8 @@ namespace bt {
     public:
         Builder& builder;
 
+        std::vector<std::string> requirements; // what should be parsed before, e.g. "variables" before "nodes"
+
         explicit BaseParser(Builder& builder) : builder(builder){};
 
         virtual void parse(std::string const& id, YAML::Node const &yaml_node) = 0;

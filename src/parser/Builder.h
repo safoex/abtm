@@ -17,12 +17,13 @@
 namespace bt {
     class Builder {
     public:
-        dictOf<std::pair<std::string, Node*>> store; // {node name e.g. "set_mode", {node type e.g. "action", node ptr [...]}}
+        dictOf<Node*> store; // {node name e.g. "set_mode", {node type e.g. "action", node ptr [...]}}
         dictOf<std::vector<std::string>> graph; // {parent node, list of children};
         dictOf<dictOf<std::any>> view_graph; // {node name, {parameters}}
         Tree* tree;
-        Builder();
-        virtual ~Builder();
+        explicit Builder(Tree* tree);
+        void make_graph();
+        virtual ~Builder() = default;
     };
 }
 
