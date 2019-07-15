@@ -50,7 +50,7 @@ namespace bt {
 
         virtual void parse(std::string const& id, YAML::Node const &yaml_node) = 0;
 
-        virtual ~BaseParser() = 0;
+        virtual ~BaseParser() = default;
 
     };
 };

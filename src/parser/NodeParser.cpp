@@ -20,7 +20,7 @@ namespace bt {
         builder.view_graph[id]["class"] = std::any(classifier);
     }
 
-    void NodeParser::add_to_builder(bt::Node *built_node) {
-        builder.store[id] = std::make_pair(type, built_node);
+    void NodeParser::add_to_builder(std::string const& id, bt::Node *built_node) {
+        builder.store[id] = built_node;
     }
 };

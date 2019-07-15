@@ -5,6 +5,8 @@
 #include "ActionStrParser.h"
 
 namespace bt {
+    using namespace expr;
+
     ActionStrParser::ActionStrParser(bt::Builder &builder) : LeafStrParser(builder) {}
 
     void ActionStrParser::parse(std::string const &id, YAML::Node const &node) {
@@ -42,7 +44,7 @@ namespace bt {
                 f(m);
         };
 
-        add_to_builder(new Action(id, builder.tree->get_memory(), a_func, {}, classifier));
+        add_to_builder(id, new Action(id, builder.tree->get_memory(), a_func, {}, classifier));
 
         builder.view_graph[id]["class"] = std::any(classifier);
     }

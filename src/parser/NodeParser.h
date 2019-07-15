@@ -19,11 +19,11 @@ namespace bt {
 
         void parse(std::string const& id, YAML::Node const &yaml_node) override;
 
-        ~NodeParser() override = 0;
+        ~NodeParser() override = default;
 
     protected:
-        std::string id, type, classifier;
-        void add_to_builder(Node* built_node);
+        std::string type, classifier;
+        void add_to_builder(std::string const& id, Node* built_node);
     };
 };
 

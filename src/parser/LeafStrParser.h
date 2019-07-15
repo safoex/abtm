@@ -22,7 +22,7 @@ namespace bt {
 
         inline void parse(std::string const& id, YAML::Node const &yaml_node) override;
 
-        ~LeafStrParser() override = 0;
+        ~LeafStrParser() override = default;
 
     protected:
         ExpressionParser expr;

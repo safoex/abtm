@@ -19,7 +19,7 @@ namespace bt {
 
         void parse(std::string const& id, YAML::Node const &yaml_node) override;
 
-        ~ActionStrParser() override = 0;
+        ~ActionStrParser() override = default;
 
     };
 }

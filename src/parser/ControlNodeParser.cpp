@@ -34,10 +34,10 @@ namespace bt {
         // get hide parameter for visualization (if true, then hide children)
         builder.view_graph[id]["hide"] = load<int>(yaml_node, "hide");
 
-        if(type == "sequence") add_to_builder(new Sequence(id, builder.tree->get_memory(), classifier));
-        if(type == "selector") add_to_builder(new Selector(id, builder.tree->get_memory(), classifier));
-        if(type == "skipper") add_to_builder(new RunningSkippingSequence(id, builder.tree->get_memory(), classifier));
-        if(type == "paralel") add_to_builder(new Parallel(id, builder.tree->get_memory(), classifier));
+        if(type == "sequence") add_to_builder(id, new Sequence(id, builder.tree->get_memory(), classifier));
+        if(type == "selector") add_to_builder(id, new Selector(id, builder.tree->get_memory(), classifier));
+        if(type == "skipper") add_to_builder(id, new RunningSkippingSequence(id, builder.tree->get_memory(), classifier));
+        if(type == "parallel") add_to_builder(id, new Parallel(id, builder.tree->get_memory(), classifier));
 
         // get children; returns exception if there are no children provided
         auto children(parse_children(id, yaml_node));

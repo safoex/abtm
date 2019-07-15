@@ -9,7 +9,7 @@
 #include <Tree.h>
 #include <vector>
 #include <unordered_map>
-#include "BaseParser.h"
+#include "ParserWithModules.h"
 #include "Builder.h"
 #include <yaml-cpp/yaml.h>
 #include <defs.h>
@@ -17,17 +17,18 @@
 
 namespace bt {
 
-    class Parser {
-        dictOf<BaseParser*> parsers; // {scope e.g. "nodes", parser [...]}
-        Builder builder;
-        std::string root_node;
+    class Parser : public ParserWithModules {
+    protected:
         std::vector<std::string> sort_parsers();
+
     public:
-        Parser(Builder builder);
-        Parser(Tree* tree);
-        void registerModule(std::string const& type, BaseParser *parser);
+        explicit Parser(Builder& builder);
+
+        explicit Parser(Builder& builder, std::vector<std::pair<std::vector<std::string>, BaseParser*>> const& parsers);
+
+        void parse(std::string const& id, YAML::Node const &yaml_node) override;
+
         void loadYamlFile(std::string const& filename);
-        virtual ~Parser();
     };
 };
 

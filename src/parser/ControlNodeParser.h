@@ -19,7 +19,7 @@ namespace bt {
 
         void parse(std::string const& id, YAML::Node const &yaml_node) override;
 
-        ~ControlNodeParser() override = 0;
+        ~ControlNodeParser() override = default;
 
     protected:
         std::vector<std::string> parse_children(std::string const& id, YAML::Node const& node);
