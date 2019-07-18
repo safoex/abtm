@@ -5,11 +5,15 @@
 #include "NodesParser.h"
 
 namespace bt{
-    NodesParser::NodesParser(bt::Builder &builder) : ParserWithModules(builder) {}
+    NodesParser::NodesParser(bt::Builder &builder) : ParserWithModules(builder) {
+        optional_requirements.emplace_back("templates");
+    }
 
     NodesParser::NodesParser(bt::Builder &builder,
          const std::vector<std::pair<std::vector<std::string>, bt::BaseParser *>> &parsers)
-         : ParserWithModules(builder, parsers) {}
+         : ParserWithModules(builder, parsers) {
+        optional_requirements.emplace_back("templates");
+    }
 
     void NodesParser::parse(std::string const &id, YAML::Node const &yaml_node) {
 
@@ -28,6 +32,7 @@ namespace bt{
                 std::string const &type = p.second["type"].as<std::string>();
 
                 if (parsers.count(type)) {
+                    std::cout << name << ' ' << type << std::endl;
                     parsers[type]->parse(name, p.second);
                 } else throw std::runtime_error(std::string("No parser provided for node") + name + " type: " + type);
             }

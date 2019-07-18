@@ -17,14 +17,7 @@ namespace bt {
             registerModule(pn, pp.second);
     }
 
-    ParserWithModules::~ParserWithModules() {
-        std::unordered_set<BaseParser*> unique_parsers;
-        for(auto const& bp: parsers)
-            if(!unique_parsers.count(bp.second)) {
-                unique_parsers.insert(bp.second);
-                delete bp.second;
-            }
-    }
+    ParserWithModules::~ParserWithModules() {}
 
     ParserWithModules::ParserWithModules(bt::Builder &builder,
          std::vector<std::pair<std::vector<std::string>, bt::BaseParser *>> const& parsers) : BaseParser(builder) {

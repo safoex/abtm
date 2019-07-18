@@ -10,6 +10,44 @@ variables:
 set:
   START_FLIGHT_ERROR: 5
 
+templates:
+  latch:
+    args:
+      required: [child]
+      optional:
+        mem: ~mem
+
+    nodes:
+      $name:
+        type: skipper
+        children: [~cond, ~sel]
+
+      ~cond:
+        type: condition
+        S: ~sub = 1 & $mem = 1
+        F: ~sub = 2 & $mem = 1
+        R: default
+
+      ~sel:
+        type: selector
+        children: [~seq, ~remember_F]
+
+      ~seq:
+        type: sequence
+        children: [$child, ~remember_S]
+
+      ~remember_F:
+        type: action
+        assign:
+          $mem: 1
+          ~sub: 2
+
+      ~remember_S:
+        type: action
+        assign:
+          $mem: 1
+          ~sub: 1
+
 nodes:
   main:
     type: parallel
@@ -72,12 +110,18 @@ nodes:
 
   on_go:
     type: sequence
-    children: [on_go_if, on_go_act]
+    children: [on_go_if, on_go_act_latch]
 
   on_go_if:
     type: condition
     S: SIG_go = 1
     R: default
+
+  on_go_act_latch:
+    type: template
+    class: latch
+    args:
+      child: on_go_act
 
   on_go_act:
     type: action
@@ -117,6 +161,9 @@ nodes:
     type: action
     assign:
       error_code: START_FLIGHT_ERROR
+
+
+
 
 
 

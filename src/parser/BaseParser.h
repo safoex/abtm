@@ -45,6 +45,7 @@ namespace bt {
         Builder& builder;
 
         std::vector<std::string> requirements; // what should be parsed before, e.g. "variables" before "nodes"
+        std::vector<std::string> optional_requirements;
 
         explicit BaseParser(Builder& builder) : builder(builder){};
 

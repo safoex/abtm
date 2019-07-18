@@ -30,6 +30,10 @@ namespace bt {
                 else
                     throw std::runtime_error("parser \'" + r + "\' required for parser \'" + p.first + "\'");
             }
+            for(auto const& r: p.second->optional_requirements) {
+                if(parsers.count(r))
+                    g[np[p.first]].push_back(np[r]);
+            }
         }
 
         std::function<void(int)> dfs = [&](int v) {
@@ -52,7 +56,7 @@ namespace bt {
             for (int i=0; i<n; ++i)
                 if (used[i] == 0)
                     dfs (i);
-            reverse (ans.begin(), ans.end());
+//            reverse (ans.begin(), ans.end());
         };
 
         // sort parsers
@@ -79,6 +83,7 @@ namespace bt {
         for(auto const& p: sort_parsers()) {
             if(config[p])
                 try {
+                    std::cout << "Parsing " << p << std::endl;
                     parsers[p]->parse(p, config[p]);
                 }
                 catch (std::exception& e) {

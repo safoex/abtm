@@ -13,5 +13,6 @@
 #include "Builder.h"
 #include "VariablesParser.h"
 #include "ControlNodeParser.h"
+#include "TemplateParser.h"
 
 #endif //ABTM_PARSERS_H

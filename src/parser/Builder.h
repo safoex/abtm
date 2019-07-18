@@ -29,7 +29,7 @@ namespace bt {
         _Tree* tree;
         explicit BuilderBase(_Tree* tree);
         void make_graph();
-        virtual ~BuilderBase() = default;
+        virtual ~BuilderBase();
     };
 
 
@@ -56,6 +56,9 @@ namespace bt {
         }
     }
 
+    template <class _Tree>
+    BuilderBase<_Tree>::~BuilderBase() {
+    }
     typedef BuilderBase<Tree> Builder;
 }
 

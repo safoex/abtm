@@ -23,3 +23,14 @@ add_executable(testparser src/test_new_parser.cpp src/Memory.cpp src/Node.cpp sr
         src/parser/CommonParser.h src/parser/NodesParser.cpp src/parser/NodesParser.h src/parser/ParserWithModules.cpp
         src/parser/ParserWithModules.h src/parser/VariablesParser.cpp src/parser/VariablesParser.h)
 target_link_libraries(testparser libyaml-cpp.so)
+
+add_executable(test_template_parser src/tests/template_parser/test_template_parser.cpp src/Memory.cpp src/Node.cpp src/Tree.cpp
+        src/parser/Parser.cpp src/parser/Parser.h src/parser/Builder.cpp  src/parser/BaseParser.cpp src/parser/BaseParser.h
+        src/parser/ControlNodeParser.cpp src/parser/NodeParser.cpp src/parser/NodeParser.h
+        src/parser/ActionStrParser.cpp src/parser/ActionStrParser.h src/parser/ExpressionParser.cpp
+        src/parser/ExpressionParser.h src/parser/ConditionStrParser.cpp src/parser/ConditionStrParser.h
+        src/parser/LeafStrParser.cpp src/parser/LeafStrParser.h src/parser/CommonParser.cpp
+        src/parser/CommonParser.h src/parser/NodesParser.cpp src/parser/NodesParser.h src/parser/ParserWithModules.cpp
+        src/parser/ParserWithModules.h src/parser/VariablesParser.cpp src/parser/VariablesParser.h
+        src/parser/TemplateParser.cpp src/parser/TemplateParser.h)
+target_link_libraries(test_template_parser libyaml-cpp.so)
