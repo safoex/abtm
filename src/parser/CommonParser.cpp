@@ -17,5 +17,6 @@ namespace bt{
         }
 
         builder.graph[name] = {root_child};
+        builder.view_graph[name]["children"] = std::vector<std::string>{root_child};
     }
 }

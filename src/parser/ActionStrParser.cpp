@@ -46,6 +46,7 @@ namespace bt {
 
         add_to_builder(id, new Action(id, builder.tree->get_memory(), a_func, {}, classifier));
 
-        builder.view_graph[id]["class"] = std::any(classifier);
+        builder.view_graph[id]["class"] = classifier;
+        builder.view_graph[id]["type"]  = std::string("action");
     }
 }

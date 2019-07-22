@@ -48,6 +48,45 @@ templates:
           $mem: 1
           ~sub: 1
 
+    children: [$child]
+
+  seq_w_latches:
+    args:
+      required: [child1, child2]
+
+    nodes:
+      $name:
+        type: sequence
+        children: [~latch1, ~latch2]
+
+      ~latch1:
+        type: t/latch
+        child: $child1
+
+      ~latch2:
+        type: t/latch
+        child: $child2
+
+    children: [$child1, $child2]
+
+  sequence_star:
+    args:
+      required: [...children]
+
+    nodes:
+      $name:
+        type: sequence
+        children: [...$children_latch]
+
+      ...$children:
+        $children: child
+        $children_index: cit
+        nodes: nodes
+
+
+    children: [...$children_latch]
+
+
 nodes:
   main:
     type: parallel
@@ -110,20 +149,24 @@ nodes:
 
   on_go:
     type: sequence
-    children: [on_go_if, on_go_act_latch]
+    children: [on_go_if, seq_latches]
 
   on_go_if:
     type: condition
     S: SIG_go = 1
     R: default
 
-  on_go_act_latch:
-    type: template
-    class: latch
-    args:
-      child: on_go_act
+  seq_latches:
+    type: t/seq_w_latches
+    child1: on_go_act1
+    child2: on_go_act2
 
-  on_go_act:
+  on_go_act2:
+    type: action
+    assign:
+      go: 2
+
+  on_go_act1:
     type: action
     assign:
       go: 1

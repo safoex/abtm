@@ -6,8 +6,8 @@
 #include <regex>
 
 namespace bt {
-    TemplateParser::TemplateParser(bt::Builder &builder, NodesParser* nodesParser)
-        : BaseParser(builder), nodesParser(nodesParser) {
+    TemplateParser::TemplateParser(bt::Builder &builder, NodesParser* nodesParser, bool use_aliases)
+        : BaseParser(builder), nodesParser(nodesParser), use_aliases(use_aliases) {
         if(!builder.extra["templates"].has_value())
             builder.extra["templates"] = dictOf<std::string>();
     }
@@ -26,8 +26,16 @@ namespace bt {
         try {
             std::stringstream ss;
             ss << yn;
+            if(yn["args"]) {
+                if((yn["args"]["required"] && yn["args"]["required"]["type"]) ||
+                    (yn["args"]["optional"] && yn["args"]["optional"]["type"]))
+                    throw std::runtime_error("Error in template " + id + ": you could not name argument \"type\"");
+            }
             auto& templates = std::any_cast<dictOf<std::string>&>(builder.extra["templates"]);
             templates[id] = ss.str();
+            if(use_aliases)
+                for(auto const& alias: alias_prefixes)
+                    nodesParser->registerModule(alias + id, this);
             std::cout << ss.str() << std::endl;
         }
         catch (std::exception& e) {
@@ -40,8 +48,17 @@ namespace bt {
 
         try {
             auto& templates = std::any_cast<dictOf<std::string>&>(builder.extra["templates"]);
+            //if it's type has template alias:
             std::string template_class;
-            load<std::string>(yn, "class", template_class);
+            auto const& type = yn["type"].as<std::string>();
+            for(auto const& a: alias_prefixes) {
+                if(a.length() < type.length() && type.substr(0,a.length()) == a) {
+                    template_class = type.substr(a.length());
+                    break;
+                }
+            }
+            if(template_class.empty())
+                load<std::string>(yn, "class", template_class);
             if(template_class.empty())
                 throw std::runtime_error(std::string("No template class provided for templated node ") + id);
 
@@ -53,34 +70,32 @@ namespace bt {
             replace_args["name"] = id;
             if(t_fixed["args"]) {
                 auto const& t_args = t_fixed["args"];
-                if(!yn["args"] && t_args["required"])
-                    throw std::runtime_error(std::string("No args provided by templated node ") + id);
                 if(t_args["required"])
                     for(auto const& ra: t_args["required"]) {
                         std::string const& arg = ra.as<std::string>();
-                        if(yn["args"][arg])
-                            replace_args[arg] = yn["args"][arg].as<std::string>();
+                        if(yn[arg])
+                            replace_args[arg] = yn[arg].as<std::string>();
                         else
                             throw std::runtime_error("No argument " + arg + " by templated node " + id);
                     }
                 if(t_args["optional"]) {
                     for(auto const& oa: t_args["optional"]) {
                         std::string const& arg = oa.first.as < std::string >();
-                        if(yn["args"][arg])
-                            replace_args[arg] = yn["args"][arg].as<std::string>();
+                        if(yn[arg])
+                            replace_args[arg] = yn[arg].as<std::string>();
                         else
                             replace_args[arg] = oa.second.as< std::string >();
                     }
                 }
             }
             std::stringstream ss;
-            ss << t_fixed["nodes"];
+            ss << t_fixed;
             auto t_str = ss.str();
 
             for(auto const& a: replace_args) {
                 auto const& _to = a.second, arg = a.first;
-//                auto from = var_symbol + arg + R"(\w)";
-//                auto to   = _to + "\\2";
+//                auto from = var_symbol + arg + "(\\w)";
+//                auto to   = _to + "\\1";
                 auto from = var_symbol + arg;
                 auto to = _to;
                 std::cout << "FROM " << from << " TO " << to << std::endl;
@@ -90,7 +105,34 @@ namespace bt {
 
             t_fixed = YAML::Load(t_str);
 
-            nodesParser->parse("nodes", t_fixed);
+            nodesParser->parse("nodes", t_fixed["nodes"]);
+
+
+            std::vector<std::string> view_children;
+            if(t_fixed["children"])
+                for(auto const& c: t_fixed["children"])
+                    view_children.push_back(c.as<std::string>());
+            builder.view_graph[id]["children"] = view_children;
+            builder.view_graph[id]["type"] = type;
+
+            // get hide parameter for visualization (if true, then hide children)
+            if(yaml_node["hide"])
+                builder.view_graph[id]["hide"] = load<int>(yaml_node, "hide");
+
+            std::string default_template_color = "\"#9262d1\"";
+            builder.view_graph[id]["color"] = load(yaml_node, "color", default_template_color);
+
+            builder.view_graph[id]["class"] = type;
+
+            for(auto const& n: t_fixed["nodes"]) {
+                auto const& node = n.first.as<std::string>();
+                bool is_in_view_children = false;
+                for(auto const& vc: view_children)
+                    if(node == vc)
+                        is_in_view_children = true;
+                if(!is_in_view_children && node != id)
+                    builder.view_graph.erase(node);
+            }
 
         }
         catch (std::exception& e) {

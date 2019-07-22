@@ -2,6 +2,7 @@
 // Created by safoex on 16.07.19.
 //
 
+#include <parser/Builder.h>
 #include "parser/Parsers.h"
 #include "Tree.h"
 #include "Memory.h"
@@ -31,7 +32,7 @@ int main() {
     builder.make_graph();
 
     std::ofstream test_gv("test_gv_tree.txt");
-    test_gv << tree.dot_tree_description();
+    test_gv << builder.get_dot_description(Builder::DOT);
     system("dot -Tpdf test_gv_tree.txt > tree.pdf");
 
 //    tree.start();

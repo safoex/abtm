@@ -49,6 +49,7 @@ namespace bt{
         auto c_func = expr.get_conditionary_function(SFR["S"], SFR["F"], SFR["R"]);
         add_to_builder(id, new Condition(id, builder.tree->get_memory(), c_func, used_vars, classifier));
 
-        builder.view_graph[id]["class"] = std::any(classifier);
+        builder.view_graph[id]["class"] = classifier;
+        builder.view_graph[id]["type"]  = std::string("condition");
     }
 }
