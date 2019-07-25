@@ -13,6 +13,7 @@
 #include "Node.h"
 #include <chrono>
 #include <fstream>
+#include "ExecutorBase.h"
 
 namespace bt{
     class NodeInfo{
@@ -32,7 +33,7 @@ namespace bt{
         NodeInfo& operator=(NodeInfo const& other);
     };
 
-    class Tree{
+    class Tree : public ExecutorBase {
     public:
         template<typename T> using dict = std::unordered_map<std::string, T>;
     protected:
@@ -53,10 +54,15 @@ namespace bt{
         void add_node(std::string const& parent_name, Condition* node, Node::State where = Node::SUCCESS);
         void add_node(std::string const& parent_name, Action* node, Node::State where = Node::SUCCESS);
         Memory<double>& get_memory();
-        virtual dict<double> callback(dict<double> sample, bool need_to_lock = true);
+        virtual dict<double> callback(dict<double> sample, bool need_to_lock = true);\
+        const std::string NEED_TO_LOCK_VAR = "__NEED_TO_LOCK__";
+        sample callback(sample const& input) override;
         std::string get_root_name();
-        ~Tree();
+        ~Tree() override;
         virtual bt::Tree::dict<double> start();
+        sample init() override;
+        sample& update_sample(sample& s) override;
+        sample update_sample(sample const& s) const override;
         Node::State state();
         std::string tree_description(bool states = false);
         std::string dot_tree_description(bool states = false);
