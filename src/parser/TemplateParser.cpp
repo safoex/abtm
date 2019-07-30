@@ -36,7 +36,7 @@ namespace bt {
             if(use_aliases)
                 for(auto const& alias: alias_prefixes)
                     nodesParser->registerModule(alias + id, this);
-            std::cout << ss.str() << std::endl;
+//            std::cout << ss.str() << std::endl;
         }
         catch (std::exception& e) {
             throw std::runtime_error(std::string("Error occured while loading template ") + id + ": " + e.what());
@@ -62,11 +62,11 @@ namespace bt {
             if(template_class.empty())
                 throw std::runtime_error(std::string("No template class provided for templated node ") + id);
 
-            std::cout << templates[template_class] << std:: endl << std::endl;
+//            std::cout << templates[template_class] << std:: endl << std::endl;
             auto t = std::regex_replace(templates[template_class], std::regex(name_symbol), "_" + id + "_");
             YAML::Node t_fixed = YAML::Load(t);
-            std::cout << t << std:: endl << std::endl;
-            dictOf<std::string> replace_args;
+//            std::cout << t << std:: endl << std::endl;
+            dictOf<std::string> replace_args, replace_args_view;
             replace_args["name"] = id;
             if(t_fixed["args"]) {
                 auto const& t_args = t_fixed["args"];
@@ -74,7 +74,8 @@ namespace bt {
                     for(auto const& ra: t_args["required"]) {
                         std::string const& arg = ra.as<std::string>();
                         if(yn[arg])
-                            replace_args[arg] = yn[arg].as<std::string>();
+                            replace_args[arg] = yn[arg].as<std::string>(),
+                            replace_args_view[arg] = replace_args[arg];
                         else
                             throw std::runtime_error("No argument " + arg + " by templated node " + id);
                     }
@@ -82,7 +83,8 @@ namespace bt {
                     for(auto const& oa: t_args["optional"]) {
                         std::string const& arg = oa.first.as < std::string >();
                         if(yn[arg])
-                            replace_args[arg] = yn[arg].as<std::string>();
+                            replace_args[arg] = yn[arg].as<std::string>(),
+                            replace_args_view[arg] = replace_args[arg];
                         else
                             replace_args[arg] = oa.second.as< std::string >();
                     }
@@ -94,14 +96,12 @@ namespace bt {
 
             for(auto const& a: replace_args) {
                 auto const& _to = a.second, arg = a.first;
-//                auto from = var_symbol + arg + "(\\w)";
-//                auto to   = _to + "\\1";
                 auto from = var_symbol + arg;
                 auto to = _to;
-                std::cout << "FROM " << from << " TO " << to << std::endl;
+//                std::cout << "FROM " << from << " TO " << to << std::endl;
                 t_str = std::regex_replace(t_str, std::regex(from), to);
             }
-            std::cout << t_str << std::endl;
+//            std::cout << t_str << std::endl;
 
             t_fixed = YAML::Load(t_str);
 
@@ -122,7 +122,11 @@ namespace bt {
             std::string default_template_color = "\"#9262d1\"";
             builder.view_graph[id]["color"] = load(yaml_node, "color", default_template_color);
 
-            builder.view_graph[id]["class"] = type;
+            std::string classifier = type + '\n';
+            for(auto const& pa: replace_args_view)
+                classifier += (std::string(pa.first) + ": " + pa.second + "\n");
+
+            builder.view_graph[id]["class"] = classifier;
 
             for(auto const& n: t_fixed["nodes"]) {
                 auto const& node = n.first.as<std::string>();

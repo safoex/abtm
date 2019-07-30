@@ -6,7 +6,9 @@
 
 namespace bt {
 
-    NodeParser::NodeParser(bt::Builder &builder) : BaseParser(builder){}
+    NodeParser::NodeParser(bt::Builder &builder) : BaseParser(builder){
+        optional_requirements.push_back("variables");
+    }
 
     void NodeParser::parse(std::string const &id, YAML::Node const &yaml_node) {
 

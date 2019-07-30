@@ -38,6 +38,7 @@ namespace bt {
 
     };
     class MIMOCenter {
+    public:
         ExecutorBase* executor;
 
         // vector< <priority, channel> >
@@ -58,7 +59,7 @@ namespace bt {
         mutex lock;
 
     public:
-        virtual void process_once(sample const &sample, MIMO_DIRECTION direction, IOBase *channel = nullptr);
+        virtual void process_once(sample sample, MIMO_DIRECTION direction, IOBase *channel = nullptr);
         //process_once(sample, OUTPUT, nullptr) -> put <sample> into <tasks> for all channels
         //process_once(sample, OUTPUT, channel) -> push <sample> into channel->process()
         //process_once(sample, INPUT, nullptr) -> apply out = executor->callback() and process(out, OUTPUT)
@@ -70,7 +71,6 @@ namespace bt {
         //TODO: as soon as Memory<std::any> implemented & used, add passing full memory const& as sample for channel
         //sample const& get_sample_for(IOBase* channel);
     public:
-        typedef function<void(sample const&)> InputFunction;
         explicit MIMOCenter(ExecutorBase* executor);
         virtual void process();
         virtual InputFunction registerIOchannel(IOBase* channel, unsigned priority = 0);

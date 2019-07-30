@@ -1,0 +1,8 @@
+//
+// Created by safoex on 26.07.19.
+//
+
+#ifndef ABTM_ICUB_FUNCTION_EXAMPLE_H
+#define ABTM_ICUB_FUNCTION_EXAMPLE_H
+
+#endif //ABTM_ICUB_FUNCTION_EXAMPLE_H

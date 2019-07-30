@@ -1,0 +1,8 @@
+//
+// Created by safoex on 26.07.19.
+//
+
+#ifndef ABTM_CPP_FUNCTION_EXAMPLES_H
+#define ABTM_CPP_FUNCTION_EXAMPLES_H
+
+#endif //ABTM_CPP_FUNCTION_EXAMPLES_H

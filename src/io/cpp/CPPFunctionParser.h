@@ -7,21 +7,26 @@
 
 #include "defs.h"
 #include "SynchronousAction.h"
-#include "../../parser/BaseParser.h"
+#include "CPPFunction.h"
+#include "../IOParser.h"
 
 namespace bt {
-    class CPPFunctionParser : public BaseParser {
-        dictOf <ExternalFunction> functions;
-        std::vector<IOBase*> io_modules;
-
+    class CPPFunctionParser : public IOParser {
+        dictOf <CPPFunction> functions;
     public:
-        CPPFunctionParser(Builder& builder);
+        CPPFunctionParser(Builder& builder, MIMOCenter& mimo);
+        CPPFunctionParser(Builder& builder, MIMOCenter& mimo, std::vector<CPPFunction> const& args);
+        CPPFunctionParser(Builder& builder, MIMOCenter& mimo, std::vector<std::vector<CPPFunction>> const& args);
 
-        void insert(std::string const& name, ExternalFunction const& function);
+
+        void insert(CPPFunction const& cppFunction);
+        void insert(std::vector<std::vector<CPPFunction>> const& cppFunctions);
+        void insert(std::vector<CPPFunction> const& cppFunctions);
+
+        void parse_one(std::string const& id, YAML::Node const &yaml_node);
         void parse(std::string const& id, YAML::Node const &yaml_node) override;
 
         std::string get_var_name(std::string const& function_name, std::string const& var_type) const;
-        ~CPPFunctionParser() override;
     };
 }
 

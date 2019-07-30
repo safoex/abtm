@@ -5,10 +5,30 @@
 #include "CPPFunctionParser.h"
 
 namespace bt{
-    CPPFunctionParser::CPPFunctionParser(bt::Builder &builder) : BaseParser(builder) {}
+    CPPFunctionParser::CPPFunctionParser(bt::Builder &builder, MIMOCenter& mimo) : IOParser(builder, mimo) {}
 
-    void CPPFunctionParser::insert(std::string const &name, const bt::ExternalFunction &function) {
-        functions[name] = function;
+    CPPFunctionParser::CPPFunctionParser(bt::Builder &builder, MIMOCenter& mimo,
+            const std::vector<std::vector<bt::CPPFunction>> &cppFunctions) : IOParser(builder, mimo) {
+        insert(cppFunctions);
+    }
+
+    CPPFunctionParser::CPPFunctionParser(bt::Builder &builder, MIMOCenter& mimo,
+            const std::vector<bt::CPPFunction> &cppFunctions) : IOParser(builder, mimo) {
+        insert(cppFunctions);
+    }
+
+    void CPPFunctionParser::insert(const std::vector<std::vector<bt::CPPFunction>> &cppFunctions) {
+        for(auto const& vf: cppFunctions)
+            insert(vf);
+    }
+
+    void CPPFunctionParser::insert(const std::vector<bt::CPPFunction> &cppFunctions) {
+        for(auto const& f: cppFunctions)
+            insert(f);
+    }
+
+    void CPPFunctionParser::insert(CPPFunction const& cppFunction) {
+        functions.insert(make_pair(cppFunction.name, cppFunction));
     }
 
     std::string CPPFunctionParser::get_var_name(std::string const &function_name, std::string const &var_type) const {
@@ -16,12 +36,22 @@ namespace bt{
     }
 
     void CPPFunctionParser::parse(std::string const &id, YAML::Node const &yaml_node) {
-        if(!functions.count(id))
-            throw std::runtime_error("Error! No function \"" + id + "\"  known");
+        for(auto const& fdefs: yaml_node)
+            parse_one(fdefs.first.as<std::string>(), fdefs.second);
+    }
 
-        auto f = functions[id];
+    void CPPFunctionParser::parse_one(std::string const &id, YAML::Node const &yaml_node) {
+
+        // ------ load function --------------------------------------------------------
 
         auto const& yn = yaml_node;
+
+        if(!yn["name"])
+            throw std::runtime_error("Error! No function name for instance " + id + " provided");
+        else if(!functions.count(yn["name"].as<std::string>()))
+            throw std::runtime_error("Error! No function \"" + id + "\"  known");
+
+        ExternalFunction f = functions[yn["name"].as<std::string>()].f;
 
         // ------ load flags  ----------------------------------------------------------
 
@@ -53,25 +83,40 @@ namespace bt{
             };
         }
 
-        // ------ add required vars ----------------------------------------------------
+        // ------ add required vars and remap if needed ----------------------------------------------------
 
-        sample vars; // so called required vars
+        sample vars = functions[id].required_vars; // so called required vars
 
-        if(yn["vars"]) {
-            auto const& vn = yn["vars"];
-            if(vn.IsSequence()) {
-
+        if(yn["remap"]) {
+            auto const& vn = yn["remap"];
+            if(vn.IsMap()) {
                 try {
+                    dictOf<std::string> remap;
                     for (auto const &v: vn) {
-                        vars.insert({v.as<std::string>(),0});
+                        remap[v.first.as<std::string>()] = v.second.as<std::string>();
                     }
+                    auto new_vars = vars;
+                    for(auto const& v: remap) {
+                        if(vars.count(v.first)) {
+                            new_vars[v.second] = vars[v.first];
+                            new_vars.erase(v.first);
+                        }
+                    }
+                    vars = new_vars;
+                    f = [f, this, remap] (sample const& s) -> sample {
+                        sample remapped_sample = s;
+                        for(auto const& v: remap) {
+                            if(s.count(v.second)) {
+                                remapped_sample[v.first] = s.at(v.second);
+                                remapped_sample.erase(v.second);
+                            }
+                        }
+                        return f(remapped_sample);
+                    };
                 }
                 catch(std::exception& e) {
-                    throw std::runtime_error("Error while loading vars of " + id + " function: " + e.what());
+                    throw std::runtime_error("Error while loading remap of " + id + " function: " + e.what());
                 }
-            }
-            else if(vn.IsScalar()) {
-
             }
             else throw std::runtime_error("Error: unsupported definition of vars in " + id + " function");
         }
@@ -81,13 +126,14 @@ namespace bt{
 
         f = [f, id, this](sample const& s) -> sample {
             sample r = f(s);
-            r.insert({{this->get_var_name(id, "return"), 1}});
+            r.insert({{this->get_var_name(id, "return"), double(1)}});
+            return r;
         };
 
         auto const& required_vars = vars;
 
         sample trigger_vars;
-        trigger_vars.insert({get_var_name(id, "call"),0});;
+        trigger_vars.insert({get_var_name(id, "call"), double(0)});;
 
         if(flags.count("on_each_var"))
             trigger_vars.insert(vars.begin(), vars.end());
@@ -103,13 +149,8 @@ namespace bt{
             io_function = new SynchronousAction(f, required_vars, trigger_vars);
         }
 
-        io_modules.push_back(io_function);
+        register_module(io_function, functions[id].priority);
     }
 
-
-    CPPFunctionParser::~CPPFunctionParser() {
-        for(auto io_ptr: io_modules)
-            delete io_ptr;
-    }
 
 }
