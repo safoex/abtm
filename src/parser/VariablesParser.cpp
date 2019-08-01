@@ -8,8 +8,8 @@ namespace bt {
     void VariablesParser::parse(std::string const &id, YAML::Node const &yaml_node) {
         if(id == "variables")
             return add_variables(yaml_node);
-        else if(id == "set")
-            return set_variables(yaml_node);
+//        else if(id == "set")
+//            return set_variables(yaml_node);
     }
 
     void VariablesParser::add_variables(YAML::Node const &yaml_node) {

@@ -47,6 +47,7 @@ namespace bt {
         bool have(std::string const& key) const;
         memory var;
     protected:
+    public:
         std::mutex lock;
         _memory_container<Scope> var_scope;
         strset2 output, inner_changes;

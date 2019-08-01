@@ -38,7 +38,7 @@ namespace bt {
         return *this;
     }
 
-    Tree::Tree(std::string name) : root_name(name), log_tree("log_tree_" + name + ".txt"),
+    Tree::Tree(std::string name) : ExecutorBase(), root_name(name), log_tree("log_tree_" + name + ".txt"),
     count_recursive(0) {
         auto root = new Sequence(get_root_name(), get_memory());
         NodeInfo ri(root, "");
@@ -359,4 +359,43 @@ namespace bt {
             return memory[key];
         else return 0;
     }
+
+
+    sample Tree::callback(const bt::sample &input) {
+        dictOf<double> s;
+        for(auto const& ikv: input)
+            s[ikv.first] = std::any_cast<double>(ikv.second);
+
+        s = callback(s, input.count(NEED_TO_LOCK_VAR));
+
+        sample output;
+        for(auto const& okv: s) {
+            output[okv.first] = okv.second;
+        }
+        return output;
+    }
+
+    sample Tree::init() {
+        auto s = start();
+
+        sample output;
+        for(auto const& okv: s)
+            output[okv.first] = okv.second;
+
+        return output;
+    }
+
+    sample& Tree::update_sample(bt::sample &s) {
+        for(auto& kv: s)
+            s[kv.first] = memory[kv.first];
+        return s;
+    }
+
+    sample Tree::update_sample(bt::sample const& s) const {
+        auto r(s);
+        for(auto& kv: s)
+            r[kv.first] = memory[kv.first];
+        return r;
+    }
+
 };
