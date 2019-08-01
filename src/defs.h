@@ -13,6 +13,7 @@ namespace bt {
     template<typename T> using dictOf = std::unordered_map<std::string, T>;
     typedef dictOf<std::any> sample;
     typedef std::function<sample(sample const&)> ExternalFunction;
+    typedef std::function<void(sample const&)> InputFunction;
 };
 
 #endif //ABTM_DEFS_H
