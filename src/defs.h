@@ -14,6 +14,12 @@ namespace bt {
     typedef dictOf<std::any> sample;
     typedef std::function<sample(sample const&)> ExternalFunction;
     typedef std::function<void(sample const&)> InputFunction;
+    enum VarScope {
+        INNER,
+        OUTPUT,
+        PURE_OUTPUT,
+        OUTPUT_NO_SEND_ZERO
+    };
 };
 
 #endif //ABTM_DEFS_H
