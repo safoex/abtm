@@ -21,7 +21,7 @@ namespace bt {
         virtual void clear_changes(VarScope scope) = 0;
         virtual void set_expr(std::string const& key, std::string const& expr) = 0;
         virtual void eval(std::string const& expr) = 0;
-        virtual ~MemoryBase() = 0;
+        virtual ~MemoryBase() = default;
     };
 }
 
