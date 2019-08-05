@@ -22,10 +22,11 @@ namespace bt {
         const std::string name_symbol = "~", var_symbol = "\\$";
         const std::string alias_prefixes[2] = {"template/", "t/"};
         bool use_aliases;
+        Parser* parser;
         NodesParser* nodesParser;
 
     public:
-        TemplateParser(Builder& builder, NodesParser* nodesParser, bool use_aliases = true);
+        TemplateParser(Builder& builder, NodesParser* nodesParser, Parser* parser, bool use_aliases = true);
 
         void parse(std::string const& id, YAML::Node const &yaml_node) override;
 

@@ -13,10 +13,13 @@
 #include "rapidjson/rapidjson.h"
 #include "rapidjson/document.h"
 #include <iostream>
+#include <unordered_set>
+#include <iomanip>
 
 namespace bt {
     class MemoryJS : public MemoryBase {
         duk_context* ctx;
+        std::unordered_set<std::string> known_vars;
     private:
         void create_proxy() {
             duk_eval_string(ctx, R"()");
@@ -55,8 +58,17 @@ namespace bt {
                     s = std::any_cast<const char*>(a);
                 }
                 catch(std::bad_any_cast &e) {
-                    throw std::runtime_error(
+                    try{
+                        std::stringstream ss;
+                        ss << std::fixed;
+                        ss << std::setprecision(9);
+                        ss << std::any_cast<double>(a);
+                        s = ss.str();
+                    }
+                    catch (std::bad_any_cast &e) {
+                        throw std::runtime_error(
                             "Error: argument \"init\" for add with key: " + key + " is not a std::string!");
+                    }
                 }
             }
             return s;
@@ -74,6 +86,24 @@ namespace bt {
             __simple_call("restore_changes();");
         }
 
+        void clear_changes(std::string const& scope) {
+            __simple_call("apply_changes(\"" + scope+ "\");clear_changes(\"" + scope + "\")");
+        }
+
+        sample get_changes(std::string const& scope) {
+            __simple_call("poll_changes(\"" + scope + "\");");
+            __simple_call("get_changes(\"" + scope + "\");");
+            std::string json_changes = duk_get_string(ctx, -1);
+            rapidjson::Document d;
+            d.Parse(json_changes.c_str());
+            sample result;
+            for(auto k = d.MemberBegin(); k != d.MemberEnd(); ++k) {
+                std::string var = k->name.GetString(), val =  k->value.GetString();
+                result[var] = val;
+            }
+            return result;
+        }
+
     public:
         explicit MemoryJS(std::string const& file = "../src/tests/embedjs/memory.js") : MemoryBase() {
             ctx = duk_create_heap_default();
@@ -89,6 +119,8 @@ namespace bt {
         void add(std::string const& key, VarScope scope, std::any const& init) override {
             std::stringstream cmd;
 
+            if(has_var(key)) return;
+
             std::string init_str = get_from_any(init, key);
 
             cmd << "add('" << get_scope_name(scope) << "', " << init_str  << ", '" << key << "');";
@@ -97,6 +129,12 @@ namespace bt {
              "Error: wrong parameters for add function! key: " + key + ", scope: "
              + get_scope_name(scope) + ", init: " + init_str
             );
+
+            known_vars.insert(key);
+        }
+
+        std::unordered_set<std::string> const& get_known_vars() override {
+            return known_vars;
         }
 
         void add(std::string const& key, VarScope scope) override {
@@ -109,35 +147,75 @@ namespace bt {
 
         void set(std::string const& key, std::any const& v) override {
             std::string json_v = get_from_any(v, key);
-
+            std::cout <<"memset " << key + " = " + json_v + ";" << std::endl;
             eval(key + " = " + json_v + ";");
         }
 
         std::any get(std::string const& key) override {
+            return get_string(key).value();
+        }
+
+        std::optional<double> get_double(std::string const& key) override {
+            rapidjson::Document d;
+            d.Parse(get_string(key).value().c_str());
+            if(d.IsDouble()) return d.GetDouble();
+            else if(d.IsInt64()) return d.GetInt64();
+            else return {};
+        }
+
+        std::optional<bool> get_bool(std::string const& key) override {
+            rapidjson::Document d;
+            d.Parse(get_string(key).value().c_str());
+            if(d.IsBool()) return d.GetBool();
+            else return {};
+        }
+
+        std::optional<std::string> get_string(std::string const& key) override {
             eval("Duktape.enc('jc', window[\"" + key + "\"])");
             return std::string(duk_get_string(ctx, -1));
         }
 
         sample get_changes(VarScope scope) override {
-            __simple_call("poll_changes(\"" + get_scope_name(scope) + "\");");
-            __simple_call("get_changes(\"" + get_scope_name(scope) + "\");");
-            std::string json_changes = duk_get_string(ctx, -1);
-            rapidjson::Document d;
-            d.Parse(json_changes.c_str());
-            sample result;
-            for(auto k = d.MemberBegin(); k != d.MemberEnd(); ++k) {
-                std::string var = k->name.GetString(), val =  k->value.GetString();
-                result[var] = val;
+            if(scope == OUTPUT) {
+                sample result;
+                for (auto sc: {OUTPUT, OUTPUT_NO_SEND_ZERO, PURE_OUTPUT}) {
+                    auto r = get_changes(get_scope_name(sc));
+                    result.insert(r.begin(), r.end());
+                }
+                return result;
             }
-            return result;
+            else return get_changes(get_scope_name(scope));
         }
 
         void clear_changes(VarScope scope) override {
-            __simple_call("apply_changes(\"" + get_scope_name(scope) + "\");clear_changes(\"" +get_scope_name(scope) + "\")");
+            if(scope == VarScope::OUTPUT) {
+                clear_changes(get_scope_name(OUTPUT));
+                clear_changes(get_scope_name(PURE_OUTPUT));
+                clear_changes(get_scope_name(OUTPUT_NO_SEND_ZERO));
+            }
+            else clear_changes(get_scope_name(scope));
         }
 
         void set_expr(std::string const& key, std::string const& expr) override {
             eval(key + " = " + expr);
+        }
+
+        bool eval_bool(std::string const& expr) override {
+            eval(expr);
+//            std::cout << "eval of " << expr << " is " << duk_get_string(ctx, -1) << std::endl;
+            return (bool)duk_get_boolean(ctx, -1);
+        }
+
+        bool has_var(std::string const& key) override {
+            return eval_bool("\"" + key + "\" in window");
+        }
+
+        bool test_expr(std::string const& expr) override {
+            duk_push_string(ctx, expr.c_str());
+            bool test = duk_peval(ctx) == 0;
+            __simple_call("poll_changes()");
+            restore_changes();
+            return test;
         }
 
         ~MemoryJS() override {

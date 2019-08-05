@@ -73,6 +73,7 @@ namespace  bt {
         std::vector<CPPFunction> functions() {
             return {
                     CPPFunction([this](sample const& s) -> sample {
+                        std::cout << "ICUB DEMO recieved call!" << std::endl;
                         this->NaturalMovementDemo();
 //                        Time::delay(3);
                         return sample();

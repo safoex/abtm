@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
         duk_eval_string(ctx, comp.c_str());
         duk_eval_string(ctx, R"(poll_changes();get_changes("input"))");
         duk_eval_string(ctx, R"(a.a < 3 && b == 1)");
-        std::cout << duk_get_boolean(ctx, -1) << std::endl;
+        std::cout <<"AAA " << duk_get_boolean(ctx, -1) << std::endl;
         b = duk_get_string(ctx, -2);
 
     }
@@ -58,9 +58,11 @@ int main(int argc, char *argv[]) {
 
     rapidjson::Document d2;
     d2.Parse(std::any_cast<std::string>(result["a"]).c_str());
-
+//    d2.Parse("asd");
     std::cout << d2.GetDouble() << std::endl;
     std::cout << b << std::endl;
+    std::optional<double> z, y(2);
+    std::cout << (z ? "YES" : "NO")  << '\t' << y.value() << std::endl;
 
 
     duk_destroy_heap(ctx);

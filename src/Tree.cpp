@@ -38,8 +38,8 @@ namespace bt {
         return *this;
     }
 
-    Tree::Tree(std::string name) : ExecutorBase(), root_name(name), log_tree("log_tree_" + name + ".txt"),
-    count_recursive(0) {
+    Tree::Tree(MemoryBase& memory, std::string name) : ExecutorBase(), memory(memory), root_name(name),
+    log_tree("log_tree_" + name + ".txt"),count_recursive(0) {
         auto root = new Sequence(get_root_name(), get_memory());
         NodeInfo ri(root, "");
         ri.order.push_back(0);
@@ -52,14 +52,14 @@ namespace bt {
 //        }
     }
 
-    Memory<double>& Tree::get_memory() {
+    MemoryBase& Tree::get_memory() {
         return memory;
     }
 
     bool Tree::any_condition_changed() {
         //DEBUG_PR("entered any_cond");
-        auto var_changed = memory.get_changes(Memory<double>::INNER);
-        auto const& out_changes = memory.get_changes(Memory<double>::OUTPUT);
+        auto var_changed = memory.get_changes(VarScope::INNER);
+        auto const& out_changes = memory.get_changes(VarScope::OUTPUT);
         var_changed.insert(out_changes.begin(), out_changes.end());
 
         strset2 cond_candidates;
@@ -79,8 +79,8 @@ namespace bt {
     }
 
     strset2 Tree::changed_conditions() {
-        auto var_changed = memory.get_changes(Memory<double>::INNER);
-        auto const& out_changes = memory.get_changes(Memory<double>::OUTPUT);
+        auto var_changed = memory.get_changes(VarScope::INNER);
+        auto const& out_changes = memory.get_changes(VarScope::OUTPUT);
         var_changed.insert(out_changes.begin(), out_changes.end());
         strset2 cond_candidates, changed_conditions;
         for(auto const& v: var_changed) {
@@ -99,10 +99,10 @@ namespace bt {
         //DEBUG_PR("PROP ONCE");
         // first take changes of any variables and change conditions
 
-        auto var_changed = memory.get_changes(Memory<double>::INNER);
-        auto out_changes = memory.get_changes(Memory<double>::OUTPUT);
+        auto var_changed = memory.get_changes(VarScope::INNER);
+        auto out_changes = memory.get_changes(VarScope::OUTPUT);
         var_changed.insert(out_changes.begin(), out_changes.end());
-        memory.clear_changes(Memory<double>::INNER);
+        memory.clear_changes(VarScope::INNER);
         strset2 cond_candidates;
         for(auto const& v: var_changed) {
             cond_candidates.insert(var_in_cond[v.first].begin(), var_in_cond[v.first].end());
@@ -144,21 +144,25 @@ namespace bt {
 //        DEBUG_PR("EXITED PROP ONCE");
     }
 
-    bt::Tree::dict<double>  Tree::callback(bt::Tree::dict<double> sample, bool need_to_lock) {
+    bt::sample  Tree::callback(bt::sample const& sample, bool need_to_lock) {
         if(need_to_lock) lock.lock();
-        memory.set(sample);
+        for(auto const& p: sample) memory.set(p.first, p.second);
         while(any_condition_changed() || !nodes_to_tick.empty()) {
             propogate_once();
         }
-        Tree::dict<double> output = memory.get_changes(Memory<double>::OUTPUT);
-        memory.clear_changes(Memory<double>::OUTPUT);
-        memory.clear_changes(Memory<double>::INNER);
+        bt::sample output = memory.get_changes(VarScope::OUTPUT);
+        memory.clear_changes(VarScope::OUTPUT);
+        memory.clear_changes(VarScope::INNER);
         if(!output.empty())// || sample.count("connection_lost"))
 //            DEBUG_PR("cb output: " << print_sample(output));
             DEBUG_PR("--------------------------");
         if(need_to_lock)
             lock.unlock();
         return output;
+    }
+
+    sample Tree::callback(const bt::sample &input) {
+        return callback(input, true);
     }
 
     std::string Tree::get_root_name()  {
@@ -188,14 +192,16 @@ namespace bt {
     void Tree::add_node(std::string const &parent_name, bt::Action *node, bt::Node::State where) {
         add_base_node(parent_name, node, where);
         for(auto const& v: node->get_used_vars()) {
-            memory.add_variable(v, Memory<double>::Scope::INNER);
+            if(!memory.has_var(v))
+                memory.add(v, VarScope::INNER, double(0));
         }
     }
 
     void Tree::add_node(std::string const &parent_name, bt::Condition *node, bt::Node::State where) {
         add_base_node(parent_name, node, where);
         for(auto const& v: node->get_used_vars()) {
-            memory.add_variable(v, Memory<double>::Scope::INNER);
+            if(!memory.has_var(v))
+                memory.add(v, VarScope::INNER, double(0));
             var_in_cond[v].insert(node->id());
         }
     }
@@ -208,9 +214,9 @@ namespace bt {
         return nodes[get_root_name()].node->state();
     }
 
-    bt::Tree::dict<double> Tree::start() {
+    bt::sample Tree::start() {
         nodes[get_root_name()].node->tick(Node::TOPDOWN_FALL);
-        dict <double> empty;
+        bt::sample empty;
         return callback(empty);
     }
 
@@ -337,43 +343,15 @@ namespace bt {
         return tree_description();
     }
 
-    Tree::dict<double> Tree::filter(Tree::dict<double> sample) const {
-        auto res = sample;
-        for(auto kv : sample)
-            if(memory.have(kv.first))
-                res.insert(kv);
-        return res;
-    }
 
-    std::string print_sample(Tree::dict<double>  sample) {
-        std::string print_out("");
+    std::string print_sample(bt::sample  sample) {
+        std::string print_out;
         if(!sample.empty())
-        for(auto v: sample)
-            print_out += v.first + ": " + std::to_string(v.second)+"; ";
+            for(auto const& v: sample)
+                print_out += v.first + ": " + std::any_cast<std::string>(v.second)+"; ";
         return print_out;
     }
 
-
-    double Tree::operator[](std::string const &key) const {
-        if(memory.have(key))
-            return memory[key];
-        else return 0;
-    }
-
-
-    sample Tree::callback(const bt::sample &input) {
-        dictOf<double> s;
-        for(auto const& ikv: input)
-            s[ikv.first] = std::any_cast<double>(ikv.second);
-
-        s = callback(s, input.count(NEED_TO_LOCK_VAR));
-
-        sample output;
-        for(auto const& okv: s) {
-            output[okv.first] = okv.second;
-        }
-        return output;
-    }
 
     sample Tree::init() {
         auto s = start();
@@ -387,14 +365,16 @@ namespace bt {
 
     sample& Tree::update_sample(bt::sample &s) {
         for(auto& kv: s)
-            s[kv.first] = memory[kv.first];
+            if(memory.has_var(kv.first))
+                s[kv.first] = memory.get(kv.first);
         return s;
     }
 
     sample Tree::update_sample(bt::sample const& s) const {
         auto r(s);
         for(auto& kv: s)
-            r[kv.first] = memory[kv.first];
+            if(memory.has_var(kv.first))
+                r[kv.first] = memory.get(kv.first);
         return r;
     }
 

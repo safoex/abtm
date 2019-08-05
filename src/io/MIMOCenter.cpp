@@ -14,25 +14,25 @@ namespace bt {
         lock_guard lockGuard(lock);
 
         std::cout << " ----- process_once ------" << std::endl;
-        std::cout << (direction == INPUT ? "INPUT" : "OUTPUT") << std::endl;
+        std::cout << (direction == MIMO_INPUT ? "INPUT" : "OUTPUT") << std::endl;
         for(auto p : sample) std::cout << p.first << '\t';
         std::cout << std::endl;
 
 
-        //process(sample, INPUT) -> apply out = executor->callback() and process(out, OUTPUT)
-        if(direction == INPUT && channel == nullptr) {
+        //process(sample, MIMO_INPUT) -> apply out = executor->callback() and process(out, MIMO_OUTPUT)
+        if(direction == MIMO_INPUT && channel == nullptr) {
             sample = executor->callback(sample);
-            direction = OUTPUT;
+            direction = MIMO_DIRECTION::MIMO_OUTPUT;
         }
 
         //process(sample, OUTPUT, channel) -> push <sample> into channel->process()
-        if(direction == OUTPUT && channel != nullptr) {
+        if(direction == MIMO_OUTPUT && channel != nullptr) {
             sample = channel->process(sample);
-            direction = INPUT;
+            direction = MIMO_INPUT;
         }
 
-        //process(sample, OUTPUT, nullptr) -> put <sample> into <tasks> for all channels
-        if(direction == OUTPUT && channel == nullptr) {
+        //process(sample, MIMO_OUTPUT, nullptr) -> put <sample> into <tasks> for all channels
+        if(direction == MIMO_OUTPUT && channel == nullptr) {
             std::cout << "------- OUTPUT sample ---------" << std::endl;
             for(auto const & p: sample) {
                 std::cout << p.first << '\t';
@@ -48,16 +48,16 @@ namespace bt {
                 }
 
                 for (auto const &m: selected_channels)
-                    tasks.push({step, channels[m], m, OUTPUT, executor->update_sample(m->get_required_vars())});
+                    tasks.push({step, channels[m], m, MIMO_OUTPUT, executor->update_sample(m->get_required_vars())});
                 step++;
             }
         }
 
 
 
-        //process(sample, INPUT, channel) -> process(sample, INPUT) || might be changed in future
-        if(direction == INPUT && channel != nullptr) {
-            tasks.push({step, channels[channel], nullptr, INPUT, sample});
+        //process(sample, MIMO_INPUT, channel) -> process(sample, MIMO_INPUT) || might be changed in future
+        if(direction == MIMO_INPUT && channel != nullptr) {
+            tasks.push({step, channels[channel], nullptr, MIMO_INPUT, sample});
             step++;
         }
 
@@ -97,12 +97,12 @@ namespace bt {
             }
         }
         return [this, channel](sample const& s) {
-            this->process(s, INPUT, channel);
+            this->process(s, MIMO_INPUT, channel);
         };
     }
 
     void MIMOCenter::start() {
-        process(executor->init(), OUTPUT);
+        process(executor->init(), MIMO_OUTPUT);
     }
 
     const sample MIMOCenter::INPUT_ONLY() {

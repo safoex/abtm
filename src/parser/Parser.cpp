@@ -93,7 +93,10 @@ namespace bt {
 
     }
 
-    void Parser::parse(std::string const &id, YAML::Node const &yaml_node) {}
+    void Parser::parse(std::string const &id, YAML::Node const &yaml_node) {
+        parsers[id]->parse(id, yaml_node);
+        // TEMPORARY HACK
+    }
 
     Parser::Parser(bt::Builder &builder, std::vector<std::pair<std::vector<std::string>, bt::BaseParser *>> const& parsers)
         : ParserWithModules(builder, parsers) {}

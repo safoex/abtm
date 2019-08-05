@@ -38,7 +38,7 @@ namespace bt{
         template<typename T> using dict = std::unordered_map<std::string, T>;
     protected:
         dict<NodeInfo> nodes;
-        Memory<double> memory;
+        MemoryBase& memory;
         dict<std::unordered_set<std::string>> var_in_cond;
         std::string root_name;
         std::mutex lock;
@@ -47,19 +47,18 @@ namespace bt{
         strset2 changed_conditions();
         strset2 saved_conditions;
     public:
-        virtual double operator[](std::string const& key) const;
         std::ofstream log_tree;
-        Tree(std::string name = "__ROOT__");
+        Tree(MemoryBase& memory, std::string name = "__ROOT__");
         void add_node(std::string const& parent_name, Sequential* node, Node::State where = Node::SUCCESS);
         void add_node(std::string const& parent_name, Condition* node, Node::State where = Node::SUCCESS);
         void add_node(std::string const& parent_name, Action* node, Node::State where = Node::SUCCESS);
-        Memory<double>& get_memory();
-        virtual dict<double> callback(dict<double> sample, bool need_to_lock = true);\
-        const std::string NEED_TO_LOCK_VAR = "__NEED_TO_LOCK__";
+        MemoryBase& get_memory();
         sample callback(sample const& input) override;
+        sample callback(sample const& input, bool need_to_lock);
+        const std::string NEED_TO_LOCK_VAR = "__NEED_TO_LOCK__";
         std::string get_root_name();
         ~Tree() override;
-        virtual bt::Tree::dict<double> start();
+        virtual sample start();
         sample init() override;
         sample& update_sample(sample& s) override;
         sample update_sample(sample const& s) const override;
@@ -68,13 +67,12 @@ namespace bt{
         std::string dot_tree_description(bool states = false);
         bool any_condition_changed();
         explicit operator std::string();
-        dict<double> filter(dict<double> sample) const;
     protected:
         std::map<NodeInfo, Node::TickType> nodes_to_tick;
         void propogate_once();
     };
 
-    std::string print_sample(Tree::dict<double> sample);
+    std::string print_sample(sample input);
 };
 
 #endif //BEHAVIOR_TREE_TREE_H

@@ -1,0 +1,47 @@
+common:
+  root_child: main
+  parameters:
+    online: 1
+
+variables:
+  input: [e,f]
+  output: [d,g,v]
+
+set:
+  d: 0
+  e: 1
+  f: 2
+  g: "{}"
+  v: 34
+
+functions:
+  cpp:
+    helloworld:
+      name: helloworld
+
+    hellosber:
+      name: hellosber
+      remap:
+        times: times1
+nodes:
+  main:
+    type: sequence
+    children: [a1, a2]
+
+  a1:
+    type: action
+    assign:
+      x: a + b /2
+      y.b: z + 23**2
+    var:
+      x: output
+      a: [input, 0]
+      b: [input, 1]
+      y: [output, "{}"]
+      z: [input, 3]
+
+  a2:
+    type: action
+    assign:
+      d: e + f /2
+      g.__b: y.b - 500

@@ -9,6 +9,8 @@
 #include <any>
 #include <functional>
 
+#define SCREAM(x) for(int i = 0; i < 20; i++) std::cout << x; std::cout << std::endl;
+
 namespace bt {
     template<typename T> using dictOf = std::unordered_map<std::string, T>;
     typedef dictOf<std::any> sample;

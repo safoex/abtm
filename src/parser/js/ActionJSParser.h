@@ -5,17 +5,12 @@
 #ifndef ABTM_ACTIONJSPARSER_H
 #define ABTM_ACTIONJSPARSER_H
 
-#include <defs.h>
-#include <Tree.h>
-#include <Node.h>
-#include "parser/Builder.h"
-#include "parser/Parser.h"
-#include "parser/NodeParser.h"
+#include "LeafJSParser.h"
 
 namespace bt {
-    class ActionJSParser : public NodeParser {
+    class ActionJSParser : public LeafJSParser {
     public:
-        explicit ActionJSParser(Builder& builder);
+        explicit ActionJSParser(Builder& builder, VariablesInNodeParser* vparser = nullptr);
 
         void parse(std::string const& id, YAML::Node const &yaml_node) override;
 

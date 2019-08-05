@@ -6,8 +6,8 @@
 #include <regex>
 
 namespace bt {
-    TemplateParser::TemplateParser(bt::Builder &builder, NodesParser* nodesParser, bool use_aliases)
-        : BaseParser(builder), nodesParser(nodesParser), use_aliases(use_aliases) {
+    TemplateParser::TemplateParser(bt::Builder &builder, NodesParser* nodesParser, Parser* parser, bool use_aliases)
+        : BaseParser(builder), nodesParser(nodesParser), use_aliases(use_aliases), parser(parser) {
         if(!builder.extra["templates"].has_value())
             builder.extra["templates"] = dictOf<std::string>();
     }
@@ -45,7 +45,6 @@ namespace bt {
 
     void TemplateParser::load_template_node(std::string const &id, YAML::Node const &yaml_node) {
         auto const& yn = yaml_node;
-
         try {
             auto& templates = std::any_cast<dictOf<std::string>&>(builder.extra["templates"]);
             //if it's type has template alias:
@@ -62,10 +61,9 @@ namespace bt {
             if(template_class.empty())
                 throw std::runtime_error(std::string("No template class provided for templated node ") + id);
 
-//            std::cout << templates[template_class] << std:: endl << std::endl;
             auto t = std::regex_replace(templates[template_class], std::regex(name_symbol), "_" + id + "_");
             YAML::Node t_fixed = YAML::Load(t);
-//            std::cout << t << std:: endl << std::endl;
+
             dictOf<std::string> replace_args, replace_args_view;
             replace_args["name"] = id;
             if(t_fixed["args"]) {
@@ -105,9 +103,17 @@ namespace bt {
 
             t_fixed = YAML::Load(t_str);
 
+            // load extra variables
+            if(t_fixed["var"]) {
+                std::cout << "adding var for " + id << std::endl;
+                parser->parse("add", t_fixed["var"]);
+            }
+
+            // load nodes
             nodesParser->parse("nodes", t_fixed["nodes"]);
 
 
+            // get fake children for visualization
             std::vector<std::string> view_children;
             if(t_fixed["children"])
                 for(auto const& c: t_fixed["children"])

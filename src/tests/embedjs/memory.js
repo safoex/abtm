@@ -71,12 +71,6 @@ function get_number_of_changes(scope) {
     return n;
 }
 
-function get_changes_stack(scope) {
-    get_number_of_changes(scope);
-    for(var v in window.___scope[scope].changes) {
-
-    }
-}
 
 function apply_changes(scope) {
     if(scope === undefined) {

@@ -1,0 +1,451 @@
+common:
+  root_child: main
+  parameters:
+    online: 1
+
+functions:
+  cpp:
+    helloworld:
+      name: helloworld
+
+    hellosber:
+      name: hellosber
+      remap:
+        times: times1
+
+    icub_move:
+      name: iCub_move
+
+variables:
+  input: ["error_code", "START_FLIGHT_ERROR", "cmd_flight_start_response", "start_tree", "SIG_skip", "SIG_go", "time", "__function_icub_move_return"]
+  output_no_send_zero: ["cmd_flight_start", "cmd_emergency_land", "skip", "go", "__function_icub_start_call", "__function_icub_move_call"]
+  output: ["times1"]
+
+set:
+  START_FLIGHT_ERROR: 5
+  start_tree: 777
+  times1: 3
+  #  __function_hellosber_call: 0
+  __function_icub_start_call: 0
+  __function_icub_move_call: 0
+
+templates:
+  function_w_timeout:
+    args:
+      required: [function, delay]
+      optional:
+        id: $name
+        
+    var:
+      __function_$function_call: [output, 0]
+
+    nodes:
+      $name:
+        type: sequence
+        children: [~fire_once, ~time_wait, ~func_clear]
+
+      ~fire_once:
+        type: t/fire_once
+        child: ~fire_seq
+        id: $id_f_w_t
+
+      ~fire_seq:
+        type: sequence
+        children: [~start_timer, ~func_call]
+
+      ~start_timer:
+        type: t/start_timer
+        id: $id_f_w_t
+        delay: $delay
+
+      ~func_call:
+        type: t/function
+        function: $function
+
+      ~time_wait:
+        type: t/on_timer
+        id: $id_f_w_t
+
+      ~func_clear:
+        type: action
+        assign:
+          __function_$function_call: 0
+
+  function_w_timeout_reset:
+    args:
+      required: [id]
+
+    nodes:
+      $name:
+        type: t/fire_once_clear
+        id: $id
+
+
+  fire_once:
+    args:
+      required: [child]
+      optional:
+        id: $name
+
+    var:
+      $id__fire_if:  input
+    
+    nodes:
+      $name:
+        type: selector
+        children: [~fire_if, ~fire_seq]
+
+      ~fire_if:
+        type: condition
+        S: $id__fire_if == 1
+        F: default
+
+      ~fire_seq:
+        type: sequence
+        children: [~fire_close, $child]
+
+      ~fire_close:
+        type: action
+        assign:
+          $id__fire_if: 1
+
+    children: [$child]
+
+  fire_once_clear:
+    args:
+      required: [id]
+      
+    var:
+      $id__fire_if: input
+
+    nodes:
+      $name:
+        type: action
+        assign:
+          $id__fire_if: 0
+
+  start_timer:
+    args:
+      required: [id, delay]
+
+    var:
+      $id__timer_started_at: input
+      $id__timer_delay: input
+      
+    nodes:
+      $name:
+        type: action
+        assign:
+          $id__timer_started_at: time
+          $id__timer_delay: $delay
+
+  on_timer:
+    args:
+      required: [id]
+      
+    var:
+      $id__timer_delay: input
+      $id__timer_started_at: input
+
+    nodes:
+      $name:
+        type: condition
+        R: default
+        S: time - $id__timer_started_at > $id__timer_delay
+
+  function:
+    args:
+      required: [function]
+
+    var:
+      __function_$function_call: [output_no_send_zero, 0]
+      __function_$function_return: [input, 0]
+      
+    nodes:
+      $name:
+        type: sequence
+        children: [~call_sel, ~wait, ~clear]
+
+      ~call_sel:
+        type: selector
+        children: [~call_if, ~call]
+
+      ~call_if:
+        type: condition
+        S: __function_$function_call > 0
+        F: default
+
+      ~call:
+        type: action
+        assign:
+          __function_$function_call: 1
+          __function_$function_return: 0
+
+      ~wait:
+        type: condition
+        S: __function_$function_return == 1
+        F: __function_$function_return == 2
+        R: default
+
+      ~clear:
+        type: action
+        assign:
+          __function_$function_call: 0
+
+
+  latch:
+    args:
+      required: [child]
+      optional:
+        mem: ~mem
+
+    var:
+      ~sub: [input, 0]
+      $mem: [input, 0]
+    
+    nodes:
+      $name:
+        type: skipper
+        children: [~cond, ~sel]
+
+      ~cond:
+        type: condition
+        S: ~sub == 1 && $mem == 1
+        F: ~sub == 2 && $mem == 1
+        R: default
+
+      ~sel:
+        type: selector
+        children: [~seq, ~remember_F]
+
+      ~seq:
+        type: sequence
+        children: [$child, ~remember_S]
+
+      ~remember_F:
+        type: action
+        assign:
+          $mem: 1
+          ~sub: 2
+
+      ~remember_S:
+        type: action
+        assign:
+          $mem: 1
+          ~sub: 1
+
+    children: [$child]
+
+  seq_w_latches:
+    args:
+      required: [child1, child2]
+
+    nodes:
+      $name:
+        type: sequence
+        children: [~latch1, ~latch2]
+
+      ~latch1:
+        type: t/latch
+        child: $child1
+
+      ~latch2:
+        type: t/latch
+        child: $child2
+
+    children: [$child1, $child2]
+
+  sequence_star:
+    args:
+      required: [...children]
+
+    nodes:
+      $name:
+        type: sequence
+        children: [...$children_latch]
+
+      ...$children:
+        $children: child
+        $children_index: cit
+        nodes: nodes
+
+
+    children: [...$children_latch]
+
+
+nodes:
+  main:
+    type: parallel
+    children: [error_handler, main_sequence]
+
+  error_handler:
+    type: parallel
+    children: [start_flight_error]
+
+  start_flight_error:
+    type: sequence
+    children: [start_flight_error_if, start_flight_error_action, start_flight_error_sleep]
+
+  start_flight_error_if:
+    type: condition
+    S: error_code == START_FLIGHT_ERROR
+    R: default
+
+  start_flight_error_action:
+    type: action
+    assign:
+      cmd_emergency_land: 1
+
+  start_flight_error_sleep:
+    type: condition
+    R: default
+
+  main_sequence:
+    type: sequence
+    children: [on_start_tree, move_icub_1,  move_icub_3, move_icub_4, move_icub_5, move_icub_2, tree_body]
+
+  on_start_tree:
+    type: condition
+    S: start_tree == 777
+    F: start_tree < 0
+    R: default
+
+
+  move_icub_1:
+    type: t/function_w_timeout
+    function: icub_move
+    id: icub_1
+    delay: 3
+
+  move_icub_2:
+    type: t/function_w_timeout
+    function: icub_move
+    id: icub_2
+    delay: 3
+
+  move_icub_3:
+    type: t/function_w_timeout
+    function: icub_move
+    id: icub_3
+    delay: 3
+
+  move_icub_4:
+    type: t/function_w_timeout
+    function: icub_move
+    id: icub_4
+    delay: 3
+
+  move_icub_5:
+    type: t/function_w_timeout
+    function: icub_move
+    id: icub_5
+    delay: 3
+
+
+  tree_body:
+    type: skipper
+    children: [on_enter_tree, test2, tree_exec]
+
+  on_enter_tree:
+    type: skipper
+    children: [on_skip, on_go]
+
+  on_skip:
+    type: sequence
+    children: [on_skip_if, on_skip_latch]
+
+  on_skip_if:
+    type: condition
+    S: SIG_skip == 1
+    R: default
+
+  on_skip_latch:
+    type: t/latch
+    child: on_skip_act
+
+  on_skip_act:
+    type: action
+    assign:
+      skip: 1
+
+  on_go:
+    type: sequence
+    children: [on_go_if, seq_latches]
+
+  on_go_if:
+    type: condition
+    S: SIG_go == 1
+    R: default
+
+  seq_latches:
+    type: t/seq_w_latches
+    child1: on_go_act1
+    child2: on_go_act2
+
+  on_go_act2:
+    type: action
+    assign:
+      go: 2
+
+  on_go_act1:
+    type: action
+    assign:
+      go: 1
+
+  tree_exec:
+    type: sequence
+    children: [send_start, correctly_started]
+
+  send_start:
+    type: selector
+    children: [if_send_start_done, send_start_action]
+
+  if_send_start_done:
+    type: condition
+    S: cmd_flight_start == 1
+    F: default
+
+  send_start_action:
+    type: action
+    assign:
+      cmd_flight_start: 1
+      cmd_flight_start_response: 0
+
+  correctly_started:
+    type: selector
+    children: [correctly_started_if, correctly_started_error_action]
+
+  correctly_started_if:
+    type: condition
+    S: cmd_flight_start_response > 0
+    F: cmd_flight_start_response < 0
+    R: default
+
+  correctly_started_error_action:
+    type: action
+    assign:
+      error_code: START_FLIGHT_ERROR
+
+  test2:
+    type: sequence
+    children: [first, second]
+
+  first:
+    type: t/fire_once
+    child: first_action
+    id: first_action
+
+  first_action:
+    type: action
+    assign:
+      abc: 123
+
+  second:
+    type: t/function
+    function: helloworld
+
+
+
+
+
+

@@ -11,13 +11,6 @@
 
 namespace bt {
 
-    Node::TickType Latch::call_table[FINAL_STATE_ENTRY+1][FINAL_TICK_TYPE_ENTRY] = {
-        {TOPDOWN_FALL, BOTTOMUP_FALL, NO_TICK, BOTTOMUP_FALL, DEACTIVATION_RUN, DEACTIVATION_RUN},
-        {TOPDOWN_FALL, NO_TICK, NO_TICK, BOTTOMUP_FALL, NO_TICK, NO_TICK},
-        {TOPDOWN_FALL, NO_TICK, NO_TICK, BOTTOMUP_FALL, NO_TICK, NO_TICK},
-        {TOPDOWN_FALL, NO_TICK, BOTTOMUP_FALL, NO_TICK, NO_TICK, NO_TICK}
-    };
-
     Node::TickType Parallel::call_table[FINAL_STATE_ENTRY+1][FINAL_TICK_TYPE_ENTRY] = {
             {TOPDOWN_FALL, BOTTOMUP_FALL, NO_TICK, BOTTOMUP_FALL, DEACTIVATION_RUN, DEACTIVATION_RUN   },
             {TOPDOWN_FALL, NO_TICK, NO_TICK, BOTTOMUP_FALL, NO_TICK, NO_TICK},
@@ -72,18 +65,17 @@ namespace bt {
     }
 
     std::string Node::state_var() const {
-        return "@" + id();
+        return "__STATE__" + id();
     }
 
     Node::State Node::state() const {
-        return Node::State(vars[state_var()]);
+        return Node::State(vars.get_double(state_var()).value());
     }
 
 
-    Node::Node(std::string id, Memory<double>& vars, std::string classifier) : _id(id), vars(vars),
+    Node::Node(std::string id, MemoryBase& vars, std::string classifier) : _id(id), vars(vars),
     _classifier(classifier), hide_further(false) {
-        vars.add_variable(state_var());
-        vars.set(state_var(), Node::UNDEFINED);
+        vars.add(state_var(), VarScope::INNER, double(Node::UNDEFINED));
     }
 
     Node::~Node() {}
@@ -100,7 +92,7 @@ namespace bt {
         return std::make_pair(after, return_tick_table[before][after]);
     }
 
-    Sequential::Sequential(std::string id, bt::Memory<double> &vars, std::string classifier) : Node(id,vars,classifier) {}
+    Sequential::Sequential(std::string id, bt::MemoryBase &vars, std::string classifier) : Node(id,vars,classifier) {}
 
     void Sequential::add_child(Node *child) {
         if (children.size() < children_limit || children_limit < 0)
@@ -109,7 +101,7 @@ namespace bt {
 
     void Sequential::insert_child(bt::Node *child, std::string const& child_name, bool after) {
         if (children.size() < children_limit || children_limit < 0) {
-            if(child_name == "") {
+            if(child_name.empty()) {
                 if(after) {
                     children.push_back(child);
                 }
@@ -146,18 +138,18 @@ namespace bt {
     }
 
     void Sequential::start_deactivation(bt::Node::TickType tick_type, bt::Node::tick_return_type tick_return) {
-        if(tick_type != DEACTIVATION_RUN && tick_type != DEACTIVATION_AFTER)
-            if(state() == RUNNING) {
+        if(tick_type != DEACTIVATION_RUN && tick_type != DEACTIVATION_AFTER) {
+            if (state() == RUNNING) {
                 evaluate(DEACTIVATION_AFTER);
-            }
-            else evaluate(DEACTIVATION_RUN);
+            } else evaluate(DEACTIVATION_RUN);
+        }
     }
 
     Node::tick_return_type Sequential::tick(TickType tick_type) {
         auto tick_children = get_call_table(state(), tick_type);
         auto _old_state = state();
         std::cout << "tick " << id() << ' ' << STATE(state()) << ' ' << TICK_TYPE(tick_type) << std::endl;
-        vars.set(state_var(), evaluate(tick_children));
+        vars.set(state_var(), (double)evaluate(tick_children));
         start_deactivation(tick_type, return_tick(_old_state, state()));
 
         return return_tick(_old_state, state());
@@ -183,7 +175,7 @@ namespace bt {
         return children.size();
     }
 
-    Selector::Selector(std::string id, Memory<double>& vars, std::string classifier) : Sequential(id, vars, classifier) {}
+    Selector::Selector(std::string id, MemoryBase& vars, std::string classifier) : Sequential(id, vars, classifier) {}
 
     Node::State Sequential::evaluate(TickType tick_type) {
         if(tick_type == NO_TICK)
@@ -219,7 +211,7 @@ namespace bt {
 
     Node::State Selector::return_state() { return Node::FAILED;}
 
-    Sequence::Sequence(std::string id, Memory<double>& vars, std::string classifier) : Sequential(id, vars, classifier) {}
+    Sequence::Sequence(std::string id, MemoryBase& vars, std::string classifier) : Sequential(id, vars, classifier) {}
 
     Node::NodeClass Sequence::node_class() const {
         return Node::Sequence;
@@ -227,7 +219,7 @@ namespace bt {
 
     Node::State Sequence::return_state() { return Node::SUCCESS;}
 
-    Parallel::Parallel(std::string id, Memory<double>& vars, std::string classifier) : Sequential(id, vars, classifier) {}
+    Parallel::Parallel(std::string id, MemoryBase& vars, std::string classifier) : Sequential(id, vars, classifier) {}
 
     Node::State Parallel::return_state() {return SUCCESS;}
 
@@ -263,7 +255,7 @@ namespace bt {
         return Node::Parallel;
     }
 
-    RunningSkippingSequence::RunningSkippingSequence(std::string id, bt::Memory<double> &vars,
+    RunningSkippingSequence::RunningSkippingSequence(std::string id, bt::MemoryBase &vars,
                                                      std::string classifier) : Sequential(id, vars, classifier) {}
 
     Node::NodeClass RunningSkippingSequence::node_class() const {
@@ -287,7 +279,7 @@ namespace bt {
         return used_vars;
     }
 
-    ActiveNode::ActiveNode(std::string id, Memory<double>& vars, std::string classifier,
+    ActiveNode::ActiveNode(std::string id, MemoryBase& vars, std::string classifier,
             std::unordered_set<std::string> const &used_vars) : NoChildNode(id, vars, classifier), used_vars(used_vars) {}
 
     ActiveNode::~ActiveNode() {}
@@ -300,16 +292,16 @@ namespace bt {
         return 0;
     }
 
-    NoChildNode::NoChildNode(std::string id, bt::Memory<double> &vars, std::string classifier) : Node(id, vars, classifier) {}
+    NoChildNode::NoChildNode(std::string id, bt::MemoryBase &vars, std::string classifier) : Node(id, vars, classifier) {}
 
-    Condition::Condition(std::string id, Memory<double> &vars, const bt::Condition::ConditionaryFunction &function,
+    Condition::Condition(std::string id, MemoryBase &vars, const bt::Condition::ConditionaryFunction &function,
                          std::unordered_set<std::string> const &used_vars, std::string classifier):
             ActiveNode(id, vars, classifier, used_vars), function(function) {}
 
     Node::tick_return_type Condition::tick(TickType tick_type) {
         auto _old_state = state();
         if(tick_type != DEACTIVATION_RUN && tick_type != DEACTIVATION_AFTER)
-            vars.set(state_var(), evaluate(tick_type));
+            vars.set(state_var(), (double)evaluate(tick_type));
 
         return return_tick(_old_state, state());
     }
@@ -336,13 +328,13 @@ namespace bt {
         return Node::Condition;
     }
 
-    Action::Action(std::string id, bt::Memory<double> &vars, const bt::Action::ActionaryFunction &function,
+    Action::Action(std::string id, bt::MemoryBase &vars, const bt::Action::ActionaryFunction &function,
                    std::unordered_set<std::string> const &used_vars,
                    std::string classifier): ActiveNode(id, vars, classifier, used_vars), function(function) {}
 
     Node::tick_return_type Action::tick(TickType tick_type) {
         auto _old_state = state();
-        vars.set(state_var(), evaluate(tick_type));
+        vars.set(state_var(), (double)evaluate(tick_type));
         return return_tick(_old_state, state());
 
     }
@@ -365,52 +357,6 @@ namespace bt {
     }
 
 
-    Latch::Latch(std::string id, bt::Memory<double> &vars, std::string latch_var_done, std::string classifier) : Sequential(id, vars, classifier) {
-        if(latch_var_done.empty())
-            latch_done = "$_ld_" + id + "_ld_$";
-        else
-            latch_done = latch_var_done;
-        vars.add_variable(latch_done);
-        LOG_DEBUG("created latch over " + latch_done);
-    }
-
-    Node::State Latch::return_state() { return RUNNING;}
-
-    Node::TickType Latch::get_call_table(bt::Node::State s, bt::Node::TickType t) {
-        return Latch::call_table[s][t];
-    }
-
-    Node::tick_return_type Latch::tick(bt::Node::TickType tick_type) {
-        auto tick_children =  Latch::get_call_table(state(), tick_type);
-        auto _old_state = state();
-        std::cout << "tick " << id() << ' ' << TICK_TYPE(tick_children) << std::endl;
-        vars.set(state_var(), evaluate(tick_children));
-        return return_tick(_old_state, state());
-    }
-
-    Node::State Latch::evaluate(bt::Node::TickType tick_type) {
-        if(tick_type == NO_TICK)
-            return state();
-
-        std::cout << "eval " << id() << ' ' << TICK_TYPE(tick_type) << std::endl;
-        if(vars[latch_done] == 0){
-            vars.set(state_var(), children.front()->tick(tick_type).first);
-        }
-
-        if(state() == UNDEFINED)
-            vars.set(latch_done, false);
-        else {
-            if (state() != RUNNING) {
-                vars.set(latch_done, true);
-                children.front()->tick(Node::DEACTIVATION_RUN);
-            }
-        }
-        return state();
-    }
-
-    Node::NodeClass Latch::node_class() const {
-        return Node::Latch;
-    }
 
     Node::NodeClass Action::node_class() const {
         return Node::Action;

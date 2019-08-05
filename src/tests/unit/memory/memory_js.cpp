@@ -14,15 +14,7 @@
 using namespace bt;
 using namespace rapidjson;
 
-#define REVEAL(X) {\
-std::string test = X;\
-if (success)\
-std::cout << test + " : OK\n";\
-else {\
-std::cout << test + " : ERROR\n";\
-return 1;\
-}\
-}
+#include "../test_defs.h"
 
 double get_double(MemoryJS & m, std::string const& key) {
     auto a = m.get(key);
@@ -104,5 +96,33 @@ int main() {
 
     REVEAL("Output No Zero scope");
 
+    m.add("zz", VarScope::OUTPUT, "1");
+    success &= m.eval_bool("zz == 1") && m.eval_bool("zz + 3 != 5");
+    REVEAL("Eval bool ")
+
+    success &= m.has_var("zz");
+
+    REVEAL("Has var (positive test)")
+
+    success &= !m.has_var("zy");
+
+    REVEAL("Has var (negative test)")
+
+    success &= m.test_expr("z += 2");
+
+    REVEAL("Test expr (positive test)")
+
+    success &= !m.test_expr("ascxvbcdf zsfdEREF +=EW343");
+
+    REVEAL("Test expr (negative test)")
+
+    m.add("zzz", VarScope::INNER, double(2.0));
+    success &= m.test_expr("zzz = 5");
+
+    REVEAL("Test expr (positive, one more)")
+
+    success &= m.get_double("zzz") == 2;
+
+    REVEAL("Test expr restore changes")
 
 }

@@ -39,7 +39,7 @@ namespace bt {
             throw YAML::Exception(YAML::Mark::null_mark(), "failed assignments load at action " + id + " exc:" + e.what());
         }
 
-        auto a_func = [assignments](Memory<double>& m) {
+        auto a_func = [assignments](MemoryBase& m) {
             for(auto const& f: assignments)
                 f(m);
         };

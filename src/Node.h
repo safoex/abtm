@@ -13,6 +13,7 @@
 #include <list>
 #include <functional>
 #include <iostream>
+#include "memory/MemoryBase.h"
 
 #define DEBUG true
 #define DEBUG_PR(A) if(DEBUG) std::cout << A << std::endl;
@@ -57,10 +58,10 @@ namespace bt {
         static Node::TickType return_tick_table[FINAL_STATE_ENTRY+1][FINAL_STATE_ENTRY+1];
     protected:
         std::string _id, _classifier;
-        Memory<double>& vars;
+        MemoryBase& vars;
         tick_return_type return_tick(Node::State before, Node::State after) const;
     public:
-        explicit Node(std::string id, Memory<double >& vars, std::string classifier = "");
+        explicit Node(std::string id, MemoryBase& vars, std::string classifier = "");
         virtual ~Node();
         virtual tick_return_type tick(TickType tick_type = BOTTOMUP_RISE) = 0;
         virtual State evaluate(TickType tick_type) = 0;
@@ -82,7 +83,7 @@ namespace bt {
     protected:
         std::list<Node*> children;
     public:
-        Sequential(std::string id, Memory<double>& vars, std::string classifier);
+        Sequential(std::string id, MemoryBase& vars, std::string classifier);
         void add_child(Node* child);
         void insert_child(Node* child, std::string const& child_name, bool after);
         void remove_child(std::string const& child_name);
@@ -100,7 +101,7 @@ namespace bt {
     class Selector : public Sequential {
         const int children_limit = -1;
     public:
-        explicit Selector(std::string id, Memory<double>& vars, std::string classifier = "");
+        explicit Selector(std::string id, MemoryBase& vars, std::string classifier = "");
         NodeClass node_class() const override;
         inline State return_state() override;
     };
@@ -108,7 +109,7 @@ namespace bt {
     class Sequence : public Sequential {
         const int children_limit = -1;
     public:
-        explicit Sequence(std::string id, Memory<double>& vars, std::string classifier = "");
+        explicit Sequence(std::string id, MemoryBase& vars, std::string classifier = "");
         NodeClass node_class() const override;
         inline State return_state() override;
     };
@@ -118,7 +119,7 @@ namespace bt {
         static TickType call_table[FINAL_STATE_ENTRY+1][FINAL_TICK_TYPE_ENTRY];
         virtual Node::TickType get_call_table(Node::State s, Node::TickType t) override;
     public:
-        explicit RunningSkippingSequence(std::string id, Memory<double>& vars, std::string classifier = "");
+        explicit RunningSkippingSequence(std::string id, MemoryBase& vars, std::string classifier = "");
         NodeClass node_class() const override;
         inline State return_state() override;
         void start_deactivation(TickType tick_type, Node::tick_return_type tick_return) override;
@@ -129,7 +130,7 @@ namespace bt {
         const int children_limit = -1;
         static TickType call_table[FINAL_STATE_ENTRY+1][FINAL_TICK_TYPE_ENTRY];
     public:
-        explicit Parallel(std::string id, Memory<double>& vars, std::string classifier = "");
+        explicit Parallel(std::string id, MemoryBase& vars, std::string classifier = "");
         State evaluate(TickType tick_type) override;
         NodeClass node_class() const override;
         inline State return_state() override;
@@ -140,7 +141,7 @@ namespace bt {
 
     class NoChildNode : public Node {
     public:
-        NoChildNode(std::string id, Memory<double>& vars,  std::string classifier);
+        NoChildNode(std::string id, MemoryBase& vars,  std::string classifier);
         const std::list<Node*>& get_children() const override;
         int children_size() const override;
     };
@@ -150,40 +151,28 @@ namespace bt {
     protected:
         std::unordered_set<std::string> used_vars;
     public:
-        ActiveNode(std::string id, Memory<double>& vars,  std::string classifier,
+        ActiveNode(std::string id, MemoryBase& vars,  std::string classifier,
                 std::unordered_set<std::string> const &used_vars);
         const std::unordered_set<std::string>& get_used_vars() const;
         ~ActiveNode() override;
     };
 
-    class Latch : public Sequential {
-    protected:
-        const int children_limit = 1;
-        std::string latch_done;
-        static TickType call_table[FINAL_STATE_ENTRY+1][FINAL_TICK_TYPE_ENTRY];
-    public:
-        explicit Latch(std::string id, Memory<double>& vars, std::string latch_var_done = "", std::string classifier = "");
-        tick_return_type tick(TickType tick_type) override;
-        State evaluate(TickType tick_type) override;
-        NodeClass node_class() const override;
-        inline State return_state() override;
-        virtual Node::TickType get_call_table(Node::State s, Node::TickType t) override;
-    };
+
 
 
     class Condition : public ActiveNode {
         friend class ConditionFabric;
     public:
-        typedef std::function<State(const Memory<double>&)> ConditionaryFunction;
+        typedef std::function<State(MemoryBase&)> ConditionaryFunction;
     protected:
         ConditionaryFunction function;
     public:
         State evaluate(TickType tick_type) override;
         tick_return_type tick(TickType tick_type) override;
         explicit Condition(std::string id,
-                           Memory<double> &vars,
+                           MemoryBase &vars,
                            const ConditionaryFunction &function = [](
-                                   const Memory<double> &a) -> State { return State::SUCCESS; },
+                                   const MemoryBase &a) -> State { return State::SUCCESS; },
                            std::unordered_set<std::string> const &used_vars = std::unordered_set<std::string>(),
                            std::string classifier = "");
         Condition& operator=(const Condition& other);
@@ -194,13 +183,13 @@ namespace bt {
     class Action : public ActiveNode {
         friend class ActionFabric;
     public:
-        typedef std::function<void(Memory<double>&)> ActionaryFunction;
+        typedef std::function<void(MemoryBase&)> ActionaryFunction;
     protected:
         ActionaryFunction function;
     public:
         Action(std::string id,
-               Memory<double> &vars,
-               const ActionaryFunction &function = [](Memory<double> &a) -> void {},
+               MemoryBase &vars,
+               const ActionaryFunction &function = [](MemoryBase &a) -> void {},
                std::unordered_set<std::string> const &used_vars = std::unordered_set<std::string>(),
                std::string classifier = "");
         tick_return_type tick(TickType tick_type) override;

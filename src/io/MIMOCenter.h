@@ -17,8 +17,8 @@
 namespace bt {
     using namespace std;
     enum MIMO_DIRECTION{
-        INPUT,
-        OUTPUT
+        MIMO_INPUT,
+        MIMO_OUTPUT
     };
 
     class MIMOTask {

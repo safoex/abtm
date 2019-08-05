@@ -14,5 +14,8 @@
 #include "VariablesParser.h"
 #include "ControlNodeParser.h"
 #include "TemplateParser.h"
+#include "js/ActionJSParser.h"
+#include "js/ConditionJSParser.h"
+#include "Scope.h"
 
 #endif //ABTM_PARSERS_H

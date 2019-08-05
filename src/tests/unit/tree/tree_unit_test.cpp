@@ -1,46 +1,45 @@
 //
-// Created by safoex on 23.07.19.
+// Created by safoex on 05.08.19.
 //
 
-#include <parser/Builder.h>
-#include "parser/Parsers.h"
+#include "defs.h"
+
+#include <yaml-cpp/yaml.h>
 #include "Tree.h"
-#include "Memory.h"
-#include "cpp_function_examples.h"
+#include "parser/Parsers.h"
+#include "memory/MemoryJS.h"
 #include "io/MIMOCenter.h"
 #include "io/cpp/CPPFunctionParser.h"
-#include "icub_function_example.h"
-#include "parser/Scope.h"
+#include "../../mimo/cpp_function_examples.h"
+#include "../../mimo/icub_function_example.h"
+#include <iostream>
 
 using namespace bt;
-
 int main() {
-    Network yarp;
 
-    // create behavior tree
+    MemoryJS memory;
     Tree tree(memory, "test");
-
-    // create builder for tree
     Builder builder(&tree);
 
-    // create input output manager
+
     MIMOCenter mimo(&tree);
     iCubRobotDemo icub_test;
-    // create parsers:
+
     auto cp = new CPPFunctionParser(builder, mimo, {
-            examples::functions,
-            icub_test.functions()
+            examples::functions
+            ,icub_test.functions()
     });
+
+    auto vinp = new VariablesInNodeParser(builder);
+
     auto np = new NodesParser(builder, {
-            {{"action"}, new ActionStrParser(builder)},
-            {{"condition"}, new ConditionStrParser(builder)},
+            {{"action"}, new ActionJSParser(builder, vinp)},
+            {{"condition"}, new ConditionJSParser(builder, vinp)},
             {{"sequence", "selector", "skipper", "parallel"}, new ControlNodeParser(builder)}
     });
-    auto tp = new TemplateParser(builder, np);
-    np->registerModule("template", tp);
     Parser parser(builder, {
+            {{"add"}, vinp},
             {{"nodes"}, np},
-            {{"templates"}, tp},
             {{"variables"}, new VariablesParser(builder)},
             {{"set"}, new SetVariablesParser(builder)},
             {{"common"}, new CommonParser(builder)},
@@ -48,22 +47,22 @@ int main() {
                     {{"cpp"}, cp}
             })}
     });
+    auto tp = new TemplateParser(builder, np, &parser);
+    np->registerModule("template", tp);
 
-    parser.loadYamlFile("../src/tests/mimo/test_mimo.yaml");
+    parser.registerModule("templates", tp);
+
+    parser.loadYamlFile("../src/tests/unit/tree/test_leaf2.yaml");
 
 //    parser.loadYamlFile("../config/test.yaml");
     builder.make_graph();
 
     std::ofstream test_gv("test_gv_tree.txt");
-    test_gv << builder.get_dot_description(Builder::DOT);
-//    test_gv << tree.dot_tree_description(false);
+    test_gv << builder.get_dot_description(Builder::DOT) << std::endl;
+    test_gv << tree.dot_tree_description(false);
     system("dot -Tpdf test_gv_tree.txt > tree.pdf");
 
-//    tree.start();
-//    std::ofstream test_results("output.yaml");
-//    test_results << tp.apply_samples("../config/input.yaml");
-
-    tree.get_memory().var["time"] = Time::now();
+    tree.get_memory().set("time", Time::now());
     mimo.start();
 
     BufferedPort<Bottle> outPort;
@@ -79,19 +78,20 @@ int main() {
 
     while(true) {
         Time::delay(1);
-        mimo.process({{"time", Time::now()}}, INPUT);
+        mimo.process({{"time", Time::now()}}, MIMO_INPUT);
         auto new_desc = builder.get_dot_description(Builder::DOT_STATES);
-//        new_desc = tree.dot_tree_description(true);
+        new_desc = tree.dot_tree_description(true);
         if(new_desc != desc) {
             desc = new_desc;
-            test_states << desc;
+            test_states << desc << std::endl;
             system("dot -Tpdf test_states.txt > states.pdf");
-//            Bottle& output = outPort.prepare();
-//            output.clear();
-//            output.addString(desc);
-//            outPort.write();
         }
+        std::cout << "------------- CHECK values -----------" << std::endl;
+        for(auto v: {"__function_icub_move_return"})
+            std::cout << v << ": " << tree.get_memory().get_string(v).value() << std::endl;
     }
+
+
 
 
 }

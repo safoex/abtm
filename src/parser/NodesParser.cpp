@@ -13,6 +13,8 @@ namespace bt{
          const std::vector<std::pair<std::vector<std::string>, bt::BaseParser *>> &parsers)
          : ParserWithModules(builder, parsers) {
         optional_requirements.emplace_back("templates");
+        optional_requirements.emplace_back("variables");
+        optional_requirements.emplace_back("set");
     }
 
     void NodesParser::parse(std::string const &id, YAML::Node const &yaml_node) {

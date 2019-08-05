@@ -3,7 +3,9 @@ project(abtm)
 
 set(CMAKE_CXX_STANDARD 17)
 
-include_directories(src)
+include_directories(src ../../libs/ChaiScript/include ../../libs/duktape-2.4.0/src)
+include_directories(../../libs/rosbridgecpp/rapidjson/include)
+include_directories(../../libs/esprima-cpp)
 
 find_package(OpenMP REQUIRED) # Find the package
 find_package(YARP REQUIRED)
@@ -57,3 +59,50 @@ add_executable(test_icub src/tests/mimo/test_icub.cpp src/tests/mimo/iCubRobot/i
         src/tests/mimo/iCubRobot/iCubRobot.h src/tests/mimo/iCubRobot/iCubPart.cpp src/tests/mimo/iCubRobot/iCubPart.h
         src/tests/mimo/iCubRobot/iCubEmotions.cpp src/tests/mimo/iCubRobot/iCubEmotions.h)
 target_link_libraries(test_icub libyaml-cpp.so ${YARP_LIBRARIES} ${OpenCV_LIBRARIES})
+
+add_executable(test_js src/tests/embedjs/testjs.cpp ../../libs/duktape-2.4.0/src/duktape.c src/memory/MemoryBase.cpp src/memory/MemoryJS.cpp src/memory/MemoryJS.h )
+
+target_link_libraries(test_js pthread dl m)
+
+
+add_executable(memory_unit_test src/tests/unit/memory/memory_js.cpp ../../libs/duktape-2.4.0/src/duktape.c
+        src/memory/MemoryBase.cpp src/memory/MemoryJS.cpp src/memory/MemoryJS.h)
+
+target_link_libraries(memory_unit_test pthread dl m)
+
+add_executable(tree_unit_test src/tests/unit/tree/tree_unit_test.cpp ../../libs/duktape-2.4.0/src/duktape.c
+        src/memory/MemoryBase.cpp src/memory/MemoryJS.cpp src/memory/MemoryJS.h src/Memory.cpp src/Node.cpp src/ExecutorBase.h src/Tree.cpp
+        src/parser/Parser.cpp src/parser/Parser.h src/parser/Builder.cpp  src/parser/BaseParser.cpp src/parser/BaseParser.h
+        src/parser/ControlNodeParser.cpp src/parser/NodeParser.cpp src/parser/NodeParser.h
+         src/parser/CommonParser.cpp
+        src/parser/CommonParser.h src/parser/NodesParser.cpp src/parser/NodesParser.h src/parser/ParserWithModules.cpp
+        src/parser/ParserWithModules.h src/parser/VariablesParser.cpp src/parser/VariablesParser.h
+        src/parser/TemplateParser.cpp src/parser/TemplateParser.h  src/io/IOBase.cpp
+        src/io/MIMOCenter.cpp src/io/MIMOCenter.h src/io/cpp/SynchronousAction.cpp src/io/cpp/SynchronousAction.h
+        src/io/cpp/CPPFunctionParser.cpp src/io/cpp/CPPFunctionParser.h src/tests/mimo/cpp_function_examples.h
+        src/io/cpp/CPPFunction.cpp src/io/cpp/CPPFunction.h src/io/IOParser.cpp src/io/IOParser.h src/parser/Scope.cpp
+        src/parser/Scope.h src/tests/mimo/icub_function_example.h src/tests/mimo/iCubRobot/iCubRobot.cpp
+        src/tests/mimo/iCubRobot/iCubRobot.h src/tests/mimo/iCubRobot/iCubPart.cpp src/tests/mimo/iCubRobot/iCubPart.h
+        src/tests/mimo/iCubRobot/iCubEmotions.cpp src/tests/mimo/iCubRobot/iCubEmotions.h
+        src/parser/js/ActionJSParser.cpp src/parser/js/ConditionJSParser.cpp ../../libs/esprima-cpp/esprima.cpp)
+
+target_link_libraries(tree_unit_test libyaml-cpp.so ${YARP_LIBRARIES} ${OpenCV_LIBRARIES} pthread dl m)
+
+
+add_executable(test_used_vars src/tests/unit/used_vars/test_used_vars.cpp ../../libs/duktape-2.4.0/src/duktape.c
+        src/memory/MemoryBase.cpp src/memory/MemoryJS.cpp src/memory/MemoryJS.h src/Memory.cpp src/Node.cpp src/ExecutorBase.h src/Tree.cpp
+        src/parser/Parser.cpp src/parser/Parser.h src/parser/Builder.cpp  src/parser/BaseParser.cpp src/parser/BaseParser.h
+        src/parser/ControlNodeParser.cpp src/parser/NodeParser.cpp src/parser/NodeParser.h
+        src/parser/CommonParser.cpp
+        src/parser/CommonParser.h src/parser/NodesParser.cpp src/parser/NodesParser.h src/parser/ParserWithModules.cpp
+        src/parser/ParserWithModules.h src/parser/VariablesParser.cpp src/parser/VariablesParser.h
+        src/parser/TemplateParser.cpp src/parser/TemplateParser.h  src/io/IOBase.cpp
+        src/io/MIMOCenter.cpp src/io/MIMOCenter.h src/io/cpp/SynchronousAction.cpp src/io/cpp/SynchronousAction.h
+        src/io/cpp/CPPFunctionParser.cpp src/io/cpp/CPPFunctionParser.h src/tests/mimo/cpp_function_examples.h
+        src/io/cpp/CPPFunction.cpp src/io/cpp/CPPFunction.h src/io/IOParser.cpp src/io/IOParser.h src/parser/Scope.cpp
+        src/parser/Scope.h src/tests/mimo/icub_function_example.h src/tests/mimo/iCubRobot/iCubRobot.cpp
+        src/tests/mimo/iCubRobot/iCubRobot.h src/tests/mimo/iCubRobot/iCubPart.cpp src/tests/mimo/iCubRobot/iCubPart.h
+        src/tests/mimo/iCubRobot/iCubEmotions.cpp src/tests/mimo/iCubRobot/iCubEmotions.h
+        src/parser/js/ActionJSParser.cpp src/parser/js/ConditionJSParser.cpp ../../libs/esprima-cpp/esprima.cpp)
+
+target_link_libraries(test_used_vars libyaml-cpp.so ${YARP_LIBRARIES} ${OpenCV_LIBRARIES} pthread dl m)
