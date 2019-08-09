@@ -1,0 +1,314 @@
+common:
+  root_child: main
+  parameters:
+    online: 1
+
+functions:
+  cpp:
+    helloworld:
+      name: helloworld
+
+    hellosber:
+      name: hellosber
+      remap:
+        times: times1
+
+    icub_move:
+      name: iCub_move
+
+variables:
+  input: ["RUNNING", "SUCCESS", "FAILED", "UNDEFINED", a,b,c,d]
+  output_no_send_zero: [yy,zz]
+  output: [aa,bb,cc,dd]
+
+set:
+  RUNNING: 0
+  SUCCESS: 1
+  FAILED: 2
+  UNDEFINED: 3
+  a: 0
+  b: 0
+  c: 0
+  d: 0
+  yy: 0
+  zz: 0
+  aa: 0
+  bb : 0
+  cc: 0
+  dd: 0
+
+templates:
+  function_w_timeout:
+    args:
+      required: [function, delay]
+      optional:
+        id: $name
+        
+    var:
+      __function_$function_call: [output, 0]
+
+    nodes:
+      $name:
+        type: sequence
+        children: [~latch, ~time_wait, ~func_clear]
+
+      ~latch:
+        type: t/latch
+        child: ~latch_seq
+
+      ~latch_seq:
+        type: sequence
+        children: [~start_timer, ~func_call_latch]
+
+      ~start_timer:
+        type: t/start_timer
+        id: $id_f_w_t
+        delay: $delay
+
+      ~func_call_latch:
+        type: t/latch
+        child: ~func_call
+
+      ~func_call:
+        type: t/function
+        function: $function
+
+      ~time_wait:
+        type: t/on_timer
+        id: $id_f_w_t
+
+      ~func_clear:
+        type: action
+        assign:
+          __function_$function_call: 0
+
+  function_w_timeout_reset:
+    args:
+      required: [id]
+
+    nodes:
+      $name:
+        type: t/fire_once_clear
+        id: $id
+
+
+  fire_once:
+    args:
+      required: [child]
+      optional:
+        id: $name
+
+    var:
+      $id__fire_if:  input
+    
+    nodes:
+      $name:
+        type: selector
+        children: [~fire_if, ~fire_seq]
+
+      ~fire_if:
+        type: condition
+        S: $id__fire_if == 1
+        F: default
+
+      ~fire_seq:
+        type: sequence
+        children: [~fire_close, $child]
+
+      ~fire_close:
+        type: action
+        assign:
+          $id__fire_if: 1
+
+    children: [$child]
+
+  fire_once_clear:
+    args:
+      required: [id]
+      
+    var:
+      $id__fire_if: input
+
+    nodes:
+      $name:
+        type: action
+        assign:
+          $id__fire_if: 0
+
+  start_timer:
+    args:
+      required: [id, delay]
+
+    var:
+      $id__timer_started_at: input
+      $id__timer_delay: input
+      
+    nodes:
+      $name:
+        type: action
+        assign:
+          $id__timer_started_at: time
+          $id__timer_delay: $delay
+
+  on_timer:
+    args:
+      required: [id]
+      
+    var:
+      $id__timer_delay: input
+      $id__timer_started_at: input
+
+    nodes:
+      $name:
+        type: condition
+        R: default
+        S: time - $id__timer_started_at > $id__timer_delay
+
+  function:
+    args:
+      required: [function]
+
+    var:
+      __function_$function_call: [output_no_send_zero, 0]
+      __function_$function_return: [input, 0]
+      
+    nodes:
+      $name:
+        type: sequence
+        children: [~call_sel, ~wait, ~clear]
+
+      ~call_sel:
+        type: selector
+        children: [~call_if, ~call]
+
+      ~call_if:
+        type: condition
+        S: __function_$function_call > 0
+        F: default
+
+      ~call:
+        type: action
+        assign:
+          __function_$function_call: 1
+          __function_$function_return: 0
+
+      ~wait:
+        type: condition
+        S: __function_$function_return == 1
+        F: __function_$function_return == 2
+        R: default
+
+      ~clear:
+        type: action
+        assign:
+          __function_$function_call: 0
+
+
+  latch:
+    args:
+      required: [child]
+      optional:
+        mem: ~mem
+
+    var:
+      __STATE__$child: [input, UNDEFINED]
+      $mem: [input, RUNNING]
+    
+    nodes:
+      $name:
+        type: skipper
+        children: [~seq, $child]
+
+      ~seq:
+        type: sequence
+        children: [~sel, ~cond]
+
+      ~sel:
+        type: selector
+        children: [~if_not_U, ~set_s]
+
+      ~if_not_U:
+        type: condition
+        S: __STATE__$child == UNDEFINED
+        F: default
+
+      ~set_s:
+        type: action
+        assign:
+          $mem: __STATE__$child
+
+      ~cond:
+        type: condition
+        S: $mem == SUCCESS
+        F: $mem == FAILED
+        R: default
+
+    children: [$child]
+
+  seq_w_latches:
+    args:
+      required: [child1, child2]
+
+    nodes:
+      $name:
+        type: sequence
+        children: [~latch1, ~latch2]
+
+      ~latch1:
+        type: t/latch
+        child: $child1
+
+      ~latch2:
+        type: t/latch
+        child: $child2
+
+    children: [$child1, $child2]
+
+  sequence_star:
+    args:
+      required: [...children]
+
+    nodes:
+      $name:
+        type: sequence
+        children: [...$children_latch]
+
+      ...$children:
+        $children: child
+        $children_index: cit
+        nodes: nodes
+
+
+    children: [...$children_latch]
+
+
+nodes:
+  main:
+    type: sequence
+    children: [c1, a1, c2, a2]
+
+  c1:
+    type: condition
+    S: a > 0
+    R: default
+
+  a1:
+    type: action
+    assign:
+      aa: 1
+      bb: 2
+
+  c2:
+    type: condition
+    S: b > 0
+    R: default
+
+  a2:
+    type: action
+    assign:
+      cc: 1
+      dd: 2
+
+
+
+

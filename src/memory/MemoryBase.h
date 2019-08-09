@@ -24,6 +24,7 @@ namespace bt {
         virtual sample get_changes(VarScope scope) = 0;
         virtual void clear_changes(VarScope scope) = 0;
         virtual void set_expr(std::string const& key, std::string const& expr) = 0;
+        virtual void eval_action(std::string const& expr) = 0;
         virtual void eval(std::string const& expr) = 0;
         virtual bool has_var(std::string const& key) = 0;
         virtual bool eval_bool(std::string const& expr) = 0;

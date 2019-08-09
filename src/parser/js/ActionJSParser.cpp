@@ -61,7 +61,7 @@ namespace bt {
             auto script = node["script"].as<std::string>();
             classifier = script;
             af = [script](MemoryBase &m) {
-                m.eval(script);
+                m.eval_action(script);
             };
 
         }

@@ -3,207 +3,222 @@ common:
   parameters:
     online: 1
 
+functions:
+  cpp:
+    helloworld:
+      name: helloworld
+
+    hellosber:
+      name: hellosber
+      remap:
+        times: times1
+
+    icub_move:
+      name: iCub_move
+
 variables:
-  input: ["error_code", "START_FLIGHT_ERROR", "cmd_flight_start_response", "start_tree", "SIG_skip", "SIG_go"]
-  output_no_send_zero: ["cmd_flight_start", "cmd_emergency_land", "skip", "go" ]
+  input: ["RUNNING", "SUCCESS", "FAILED", "UNDEFINED", a,b,c,d, A00]
+  output_no_send_zero: [yy,zz]
+  output: [aa,bb,cc,dd]
 
 set:
-  START_FLIGHT_ERROR: 5
+  A00: 0
+  RUNNING: 0
+  SUCCESS: 1
+  FAILED: 2
+  UNDEFINED: 3
+  a: 0
+  b: 0
+  c: 0
+  d: 0
+  yy: 0
+  zz: 0
+  aa: 0
+  bb : 0
+  cc: 0
+  dd: 0
 
 templates:
   latch:
     args:
       required: [child]
-      optional:
-        mem: ~mem
+
+    var:
+      __STATE__$child: [input, UNDEFINED]
 
     nodes:
       $name:
         type: skipper
-        children: [~cond, ~sel]
+        children: [~mask, $child]
 
-      ~cond:
+      ~mask:
         type: condition
-        S: ~sub = 1 & $mem = 1
-        F: ~sub = 2 & $mem = 1
+        S: __STATE__$child == SUCCESS
+        F: __STATE__$child == FAILED
         R: default
-
-      ~sel:
-        type: selector
-        children: [~seq, ~remember_F]
-
-      ~seq:
-        type: sequence
-        children: [$child, ~remember_S]
-
-      ~remember_F:
-        type: action
-        assign:
-          $mem: 1
-          ~sub: 2
-
-      ~remember_S:
-        type: action
-        assign:
-          $mem: 1
-          ~sub: 1
 
     children: [$child]
 
-  seq_w_latches:
+  reset:
     args:
-      required: [child1, child2]
+      required: [child]
+
+    var:
+      __STATE__$child: [input, UNDEFINED]
+
+    nodes:
+      $name:
+        type: action
+        assign:
+          __STATE__$child: UNDEFINED
+
+  seq_latches:
+    args:
+      required: [children]
+      construct:
+        _children_latched:
+          from: children
+          V: $V_latch
+      view_exclude: [children]
 
     nodes:
       $name:
         type: sequence
-        children: [~latch1, ~latch2]
+        children: $_children_latched
 
-      ~latch1:
-        type: t/latch
-        child: $child1
+    unpack:
+      children:
+        nodes:
+          $V_latch:
+            type: t/latch
+            child: $V
 
-      ~latch2:
-        type: t/latch
-        child: $child2
+    children: $children
 
-    children: [$child1, $child2]
-
-  sequence_star:
+  control:
     args:
-      required: [...children]
+      required: [children, _type]
+      view_exclude: [children]
+
+    nodes:
+      $name:
+        type: $_type
+        children: $children
+
+    children: $children
+
+  action_return:
+    args:
+      required: [assign]
+      optional:
+        return: S
+      view_exclude: [assign]
 
     nodes:
       $name:
         type: sequence
-        children: [...$children_latch]
+        children: [~act, ~cond]
+      ~act:
+        type: action
+        assign: $assign
+      ~cond:
+        type: condition
+        $return: default
 
-      ...$children:
-        $children: child
-        $children_index: cit
-        nodes: nodes
+    children: [~act]
 
-
-    children: [...$children_latch]
 
 
 nodes:
   main:
-    type: parallel
-    children: [error_handler, main_sequence]
-
-  error_handler:
-    type: parallel
-    children: [start_flight_error]
-
-  start_flight_error:
     type: sequence
-    children: [start_flight_error_if, start_flight_error_action, start_flight_error_sleep]
+    children: [S0]
+#    children: [E, L, C1, LL, C2, S0]
+#
+#  E:
+#    type: condition
+#    S: z > 0
+#    R: default
+#    var:
+#      z: [input, 0]
+#
+#  L:
+#    type: t/latch
+#    child: T
+#
+#  T:
+#    type: sequence
+#    children: [count, cond]
+#
+#  count:
+#    type: action
+#    assign:
+#      x: x + 1
+#    var:
+#      x: [output, 0]
+#
+#  cond:
+#    type: condition
+#    S: y > 0
+#    R: default
+#    var:
+#      y: [input, 0]
+#
+#  C1:
+#    type: condition
+#    S: v > 1
+#    R: default
+#    var:
+#      v: [input, 0]
+#
+#  LL:
+#    type: t/latch
+#    child: RLS
+#
+#  RLS:
+#    type: sequence
+#    children: [RL, A]
+#
+#  RL:
+#    type: t/reset
+#    child: T
+#
+#  A:
+#    type: action
+#    assign:
+#      z: 0
+#
+#  C2:
+#    type: condition
+#    S: z > 2
+#    R: default
 
-  start_flight_error_if:
-    type: condition
-    S: error_code = START_FLIGHT_ERROR
-    R: default
+  S0:
+    type: t/seq_latches
+    children:
+      - A01
+      - A02
+      - A03
 
-  start_flight_error_action:
+  A01:
+    type: t/action_return
+    return: F
+    assign:
+      A00: 0
+
+  A02:
     type: action
     assign:
-      cmd_emergency_land: 1
+      A01: 0
+    var:
+      A01: [input, 0]
 
-  start_flight_error_sleep:
-    type: condition
-    R: default
-
-
-  main_sequence:
-    type: sequence
-    children: [on_start_tree, tree_body]
-
-  on_start_tree:
-    type: condition
-    S: start_tree = 777
-    F: start_tree < 0
-    R: default
-
-  tree_body:
-    type: skipper
-    children: [on_enter_tree, tree_exec]
-
-  on_enter_tree:
-    type: skipper
-    children: [on_skip, on_go]
-
-  on_skip:
-    type: sequence
-    children: [on_skip_if, on_skip_act]
-
-  on_skip_if:
-    type: condition
-    S: SIG_skip = 1
-    R: default
-
-  on_skip_act:
+  A03:
     type: action
     assign:
-      skip: 1
-
-  on_go:
-    type: sequence
-    children: [on_go_if, seq_latches]
-
-  on_go_if:
-    type: condition
-    S: SIG_go = 1
-    R: default
-
-  seq_latches:
-    type: t/seq_w_latches
-    child1: on_go_act1
-    child2: on_go_act2
-
-  on_go_act2:
-    type: action
-    assign:
-      go: 2
-
-  on_go_act1:
-    type: action
-    assign:
-      go: 1
-
-  tree_exec:
-    type: sequence
-    children: [send_start, correctly_started]
-
-  send_start:
-    type: selector
-    children: [if_send_start_done, send_start_action]
-
-  if_send_start_done:
-    type: condition
-    S: cmd_flight_start = 1
-    F: default
-
-  send_start_action:
-    type: action
-    assign:
-      cmd_flight_start: 1
-      cmd_flight_start_response: 0
-
-  correctly_started:
-    type: selector
-    children: [correctly_started_if, correctly_started_error_action]
-
-  correctly_started_if:
-    type: condition
-    S: cmd_flight_start_response > 0
-    F: cmd_flight_start_response < 0
-    R: default
-
-  correctly_started_error_action:
-    type: action
-    assign:
-      error_code: START_FLIGHT_ERROR
+      A02: 0
+    var:
+      A02: [input, 0]
 
 
 

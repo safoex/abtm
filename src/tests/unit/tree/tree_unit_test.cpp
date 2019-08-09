@@ -59,10 +59,11 @@ int main() {
 
     std::ofstream test_gv("test_gv_tree.txt");
     test_gv << builder.get_dot_description(Builder::DOT) << std::endl;
-    test_gv << tree.dot_tree_description(false);
+//    test_gv << tree.dot_tree_description(false);
     system("dot -Tpdf test_gv_tree.txt > tree.pdf");
 
     tree.get_memory().set("time", Time::now());
+    tree.set_strategy(Tree::ASYNC);
     mimo.start();
 
     BufferedPort<Bottle> outPort;
@@ -86,9 +87,9 @@ int main() {
             test_states << desc << std::endl;
             system("dot -Tpdf test_states.txt > states.pdf");
         }
-        std::cout << "------------- CHECK values -----------" << std::endl;
-        for(auto v: {"__function_icub_move_return"})
-            std::cout << v << ": " << tree.get_memory().get_string(v).value() << std::endl;
+//        std::cout << "------------- CHECK values -----------" << std::endl;
+//        for(auto v: {"__function_icub_move_return"})
+//            std::cout << v << ": " << tree.get_memory().get_string(v).value() << std::endl;
     }
 
 

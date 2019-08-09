@@ -39,7 +39,7 @@ namespace bt {
     }
 
     Tree::Tree(MemoryBase& memory, std::string name) : ExecutorBase(), memory(memory), root_name(name),
-    log_tree("log_tree_" + name + ".txt"),count_recursive(0) {
+    log_tree("log_tree_" + name + ".txt"),count_recursive(0), strategy(ASYNC) {
         auto root = new Sequence(get_root_name(), get_memory());
         NodeInfo ri(root, "");
         ri.order.push_back(0);
@@ -71,7 +71,9 @@ namespace bt {
             i++;
             auto state_after = nodes[c].node->evaluate(Node::TOPDOWN_FALL);
 //            DEBUG_PR("any cond changed " << i << ": " << nodes[c].node->id() + " " + STATE(nodes[c].node->state()) + " " + STATE(state_after));
-            if(state_after != nodes[c].node->state())
+
+            auto p = Node::return_tick_table[nodes[c].node->state()][nodes[c].node->evaluate(Node::BOTTOMUP_FALL)];
+            if(p == Node::BOTTOMUP_RISE || p == Node::TOPDOWN_RISE)
                 return true;
         }
 //        return !saved_conditions.empty();
@@ -95,6 +97,29 @@ namespace bt {
         return changed_conditions;
     }
 
+    void Tree::set_strategy(bt::Tree::EXEC_STRATEGY es) {
+        strategy = es;
+    }
+
+    void Tree::clear_visited_from(std::string node) {
+        if(node.empty()) {
+            for(auto const& node: nodes) {
+                node.second.node->visited = false;
+            }
+        }
+        else {
+            while (node != root_name) {
+                nodes[node].node->visited = false;
+                node = nodes[node].parent;
+            }
+        }
+    }
+
+    void Tree::propagate_once_top_down() {
+        memory.clear_changes(VarScope::INNER);
+        nodes[get_root_name()].node->tick(Node::TOPDOWN_FALL);
+    }
+
     void Tree::propogate_once() {
         //DEBUG_PR("PROP ONCE");
         // first take changes of any variables and change conditions
@@ -115,12 +140,20 @@ namespace bt {
             }
 //        DEBUG_PR("condition candidates size: " << cond_candidates.size());
         for(auto const& c: cond_candidates) {
-            auto p = nodes[c].node->tick();
-            if(p.second == Node::TOPDOWN_RISE || p.second == Node::BOTTOMUP_RISE)
-                if(nodes_to_tick.count(nodes[nodes[c].parent]))
+            auto old_s = nodes[c].node->state();
+            auto s = nodes[c].node->evaluate(Node::BOTTOMUP_FALL);
+            std::pair<Node::State, Node::TickType> p(s, Node::return_tick_table[old_s][s]);
+            std::cout << "COND\t" << c << ' ' << STATE(old_s) << "\t" << STATE(s) << "\t" << TICK_TYPE(p.second) << std::endl;
+//            auto p = nodes[c].node->tick();
+//            std::cout << "\t\t" << '\t' << STATE(p.first) << std::endl;
+//            std::cout << "\t\t" << TICK_TYPE(p.second) << "\t" << TICK_TYPE(p2.second) << std::endl;
+            if(p.second == Node::TOPDOWN_RISE || p.second == Node::BOTTOMUP_RISE) {
+                if (nodes_to_tick.count(nodes[nodes[c].parent]))
                     nodes_to_tick[nodes[nodes[c].parent]] = std::min(p.second, nodes_to_tick[nodes[nodes[c].parent]]);
                 else
                     nodes_to_tick[nodes[nodes[c].parent]] = p.second;
+                clear_visited_from(c);
+            }
         }
 
 
@@ -147,8 +180,12 @@ namespace bt {
     bt::sample  Tree::callback(bt::sample const& sample, bool need_to_lock) {
         if(need_to_lock) lock.lock();
         for(auto const& p: sample) memory.set(p.first, p.second);
+        clear_visited_from();
         while(any_condition_changed() || !nodes_to_tick.empty()) {
-            propogate_once();
+            if(strategy == ASYNC)
+                propogate_once();
+            else if(strategy == HALF_ASYNC)
+                propagate_once_top_down();
         }
         bt::sample output = memory.get_changes(VarScope::OUTPUT);
         memory.clear_changes(VarScope::OUTPUT);
@@ -247,7 +284,7 @@ namespace bt {
         return result;
     }
 
-    std::pair<std::string, std::string> get_node_name(Node* n, bool states) {
+    std::pair<std::string, std::string> Tree::get_node_name(Node* n, bool states) {
         std::unordered_map<int, std::pair<std::string, std::string>> colors{
                 {Node::Sequence,{"white","->"}},
                 {Node::Selector,{"white","?"}},
@@ -259,8 +296,16 @@ namespace bt {
                 {Node::Condition,{"orange",""}}
         };
         std::string desc;
-        if(states)
+        if(states) {
             desc = STATE(n->state());
+            if(n->node_class() == Node::Condition) {
+                auto c = dynamic_cast<Condition*>(n);
+                desc += "\n" + n->classifier();
+                for(auto const& v: c->get_used_vars()) {
+                    desc += "\n" + v + ":\t" + std::any_cast<std::string>(memory.get(v));
+                }
+            }
+        }
         else
             desc = n->classifier();
 

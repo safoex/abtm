@@ -14,15 +14,21 @@ namespace bt {
         IOBase(sample const& required_vars, sample const& trigger_vars)
             : required_vars(required_vars), trigger_vars(trigger_vars) {};
 
+        IOBase() {}
+
+        void set_vars(sample const& _required_vars, sample const& _trigger_vars) {
+            required_vars = _required_vars;
+            trigger_vars = _trigger_vars;
+        }
         virtual sample process(sample const& output) {
             return {};
         };
 
-        sample const& get_required_vars() const {
+        virtual sample const& get_required_vars() const {
             return required_vars;
         };
 
-        sample const& get_trigger_vars() const {
+        virtual sample const& get_trigger_vars() const {
             return trigger_vars;
         };
 

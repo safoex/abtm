@@ -13,6 +13,7 @@
 #include <queue>
 #include <functional>
 #include <unordered_set>
+#include <mutex>
 
 namespace bt {
     using namespace std;
@@ -46,6 +47,7 @@ namespace bt {
 
         //quickly find whether we need to feed the channel
         dictOf<unordered_set<IOBase*>> vars_to_channels;
+        std::unordered_set<IOBase*> all_vars_channels;
 
 
         // step accumulates number of processed samples and used as "time when sample executed"
@@ -57,6 +59,8 @@ namespace bt {
 
         //thread safety
         mutex lock;
+
+        sample sample_for_channel(IOBase* ch, sample const& s);
 
     public:
         virtual void process_once(sample sample, MIMO_DIRECTION direction, IOBase *channel = nullptr);
@@ -74,8 +78,9 @@ namespace bt {
         explicit MIMOCenter(ExecutorBase* executor);
         virtual void process();
         virtual InputFunction registerIOchannel(IOBase* channel, unsigned priority = 0);
-        static const sample FULL_MEMORY();
-        static const sample INPUT_ONLY();
+        static const sample ALL_MEMORY();
+        static const sample ALL_CHANGED();
+        static const sample ON_EVERY();
         virtual void start();
     };
 }

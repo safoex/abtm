@@ -1,0 +1,161 @@
+common:
+  root_child: main
+  parameters:
+    online: 1
+
+variables:
+  input: ["RUNNING", "SUCCESS", "FAILED", "UNDEFINED", a,b,c,d, R]
+  output_no_send_zero: [yy,zz]
+  output: [aa,bb,cc,dd, Q]
+
+set:
+  RUNNING: 0
+  SUCCESS: 1
+  FAILED: 2
+  UNDEFINED: 3
+  a: 0
+  b: 0
+  c: 0
+  d: 0
+  yy: 0
+  zz: 0
+  aa: 0
+  bb : 0
+  cc: 0
+  dd: 0
+  R: "{data: 0}"
+  Q: "{}"
+
+ROS:
+  /first:
+    type: subscriber
+    var: R
+
+  /second:
+    type: publisher
+    var: Q
+    msg: std_msgs/String
+
+templates:
+  latch:
+    args:
+      required: [child]
+      optional:
+        mem: ~mem
+        state: ~state
+
+    var:
+      __STATE__$child: [input, UNDEFINED]
+      $mem: [input, 0]
+      $state: [input, UNDEFINED]
+
+    
+    nodes:
+      $name:
+        type: skipper
+        children: [~mask_seq, $child]
+
+      ~mask_seq:
+        type: sequence
+        children: [~mask_sel, ~mask]
+
+      ~mask_sel:
+        type: selector
+        children: [~mask_set_state_if, ~mask_set_state_seq]
+
+      ~mask_set_state_if:
+        type: condition
+        S: $mem == 1
+        F: default
+
+      ~mask_set_state_seq:
+        type: sequence
+        children: [~mask_set_state, ~mask_finish_state_sel]
+
+      ~mask_set_state:
+        type: action
+        assign:
+          $state: __STATE__$child
+
+      ~mask_finish_state_sel:
+        type: selector
+        children: [~mask_finish_state_if, ~mask_finish_state]
+
+      ~mask_finish_state_if:
+        type: condition
+        F: $state == SUCCESS || $state == FAILED
+        S: default
+
+      ~mask_finish_state:
+        type: action
+        assign:
+          $mem: 1
+
+      ~mask:
+        type: condition
+        S: $state == SUCCESS
+        F: $state == FAILED
+        R: default
+
+    children: [$child]
+
+  latch_simple:
+    args:
+      required: [child]
+
+    var:
+      __STATE__$child: [input, UNDEFINED]
+
+    nodes:
+      $name:
+        type: skipper
+        children: [~mask, $child]
+
+      ~mask:
+        type: condition
+        S: __STATE__$child == SUCCESS
+        F: __STATE__$child == FAILED
+        R: default
+
+    children: [$child]
+
+
+  reset:
+    args:
+      required: [child]
+
+    var:
+      __STATE__$child: [input, UNDEFINED]
+
+    nodes:
+      $name:
+        type: action
+        assign:
+          __STATE__$child: UNDEFINED
+
+nodes:
+  main:
+    type: sequence
+    children: [A, B, C]
+
+  A:
+    type: condition
+    S: R.data == 1
+    R: default
+
+  B:
+    type: action
+    script: "Q.data = 'YEAH'"
+
+  C:
+    type: condition
+    S: R.data == 2
+    R: default
+
+
+
+
+
+
+
+

@@ -73,6 +73,7 @@ namespace bt {
         virtual const std::list<Node*>& get_children() const = 0;
         virtual int children_size() const = 0;
         virtual NodeClass node_class() const = 0;
+        bool visited;
     };
 
 

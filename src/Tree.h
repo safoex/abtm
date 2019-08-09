@@ -46,13 +46,19 @@ namespace bt{
         int count_recursive;
         strset2 changed_conditions();
         strset2 saved_conditions;
+        void clear_visited_from(std::string node = "");
+        std::pair<std::string, std::string> get_node_name(Node* n, bool states);
     public:
+        enum EXEC_STRATEGY {
+            ASYNC,
+            HALF_ASYNC
+        };
         std::ofstream log_tree;
         Tree(MemoryBase& memory, std::string name = "__ROOT__");
         void add_node(std::string const& parent_name, Sequential* node, Node::State where = Node::SUCCESS);
         void add_node(std::string const& parent_name, Condition* node, Node::State where = Node::SUCCESS);
         void add_node(std::string const& parent_name, Action* node, Node::State where = Node::SUCCESS);
-        MemoryBase& get_memory();
+        MemoryBase& get_memory() override;
         sample callback(sample const& input) override;
         sample callback(sample const& input, bool need_to_lock);
         const std::string NEED_TO_LOCK_VAR = "__NEED_TO_LOCK__";
@@ -67,9 +73,12 @@ namespace bt{
         std::string dot_tree_description(bool states = false);
         bool any_condition_changed();
         explicit operator std::string();
+        void set_strategy(EXEC_STRATEGY es);
     protected:
         std::map<NodeInfo, Node::TickType> nodes_to_tick;
         void propogate_once();
+        void propagate_once_top_down();
+        EXEC_STRATEGY strategy;
     };
 
     std::string print_sample(sample input);

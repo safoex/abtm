@@ -28,7 +28,7 @@ ___scopes = {
     }
 };
 
-___reg = {}
+___reg = {};
 
 function copy(x) {
     return Duktape.dec('jc', Duktape.enc('jc', x));
@@ -81,7 +81,7 @@ function get_changes_stack(scope) {
 function apply_changes(scope) {
     if(scope === undefined) {
         for(var s in ___scopes)
-            restore_changes(s);
+            apply_changes(s);
     }
     else {
         for(var v in window.___scopes[scope].changes) {

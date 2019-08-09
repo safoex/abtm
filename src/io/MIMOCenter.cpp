@@ -4,14 +4,29 @@
 
 #include "MIMOCenter.h"
 #include <iostream>
+#include "memory/MemoryBase.h"
 
 namespace bt {
     MIMOCenter::MIMOCenter(bt::ExecutorBase *executor) : executor(executor) {
         step = 0;
     }
 
+    sample MIMOCenter::sample_for_channel(bt::IOBase *ch, sample const& s) {
+        auto rs = ch->get_required_vars();
+        if(rs.count(ALL_MEMORY().begin()->first)) {
+            sample r;
+            r["memory"] = &executor->get_memory();
+            return r;
+        }
+        else if(rs.count(ALL_CHANGED().begin()->first)) {
+            return s;
+        }
+        else return executor->update_sample(rs);
+    }
+
+
     void MIMOCenter::process_once(bt::sample sample, MIMO_DIRECTION direction, IOBase *channel) {
-        lock_guard lockGuard(lock);
+        std::lock_guard lockGuard(lock);
 
         std::cout << " ----- process_once ------" << std::endl;
         std::cout << (direction == MIMO_INPUT ? "INPUT" : "OUTPUT") << std::endl;
@@ -33,11 +48,13 @@ namespace bt {
 
         //process(sample, MIMO_OUTPUT, nullptr) -> put <sample> into <tasks> for all channels
         if(direction == MIMO_OUTPUT && channel == nullptr) {
+
             std::cout << "------- OUTPUT sample ---------" << std::endl;
             for(auto const & p: sample) {
                 std::cout << p.first << '\t';
             }
             std::cout << std::endl << "--------------" << std::endl;
+
             if (!sample.empty()) {
                 unordered_set<IOBase*> selected_channels;
                 for(auto const& kv: sample) {
@@ -46,9 +63,10 @@ namespace bt {
                         selected_channels.insert(channels_from_var.begin(), channels_from_var.end());
                     }
                 }
+                selected_channels.insert(all_vars_channels.begin(), all_vars_channels.end());
 
                 for (auto const &m: selected_channels)
-                    tasks.push({step, channels[m], m, MIMO_OUTPUT, executor->update_sample(m->get_required_vars())});
+                    tasks.push({step, channels[m], m, MIMO_OUTPUT, sample_for_channel(m, sample)});
                 step++;
             }
         }
@@ -86,14 +104,12 @@ namespace bt {
         }
         std::cout << std::endl;
 
-        if(!channel->get_trigger_vars().empty())  { // INPUT_ONLY()
-            if(!channel->get_trigger_vars().count(FULL_MEMORY().begin()->first)) {
-                for (auto const &kv: channel->get_trigger_vars()) {
-                    vars_to_channels[kv.first].insert(channel);
-                }
-            }
-            else {
-                //TODO: as soon as Memory<std::any> implemented & used, add passing full memory const& as sample for channel
+        if(channel->get_trigger_vars().count(ON_EVERY().begin()->first))  {
+            all_vars_channels.insert(channel);
+        }
+        else {
+            for (auto const &kv: channel->get_trigger_vars()) {
+                vars_to_channels[kv.first].insert(channel);
             }
         }
         return [this, channel](sample const& s) {
@@ -105,12 +121,16 @@ namespace bt {
         process(executor->init(), MIMO_OUTPUT);
     }
 
-    const sample MIMOCenter::INPUT_ONLY() {
-        return {};
+    const sample MIMOCenter::ALL_CHANGED() {
+        return {{"____ALL_CHANGED____", std::any()}};
     }
 
-    const sample MIMOCenter::FULL_MEMORY() {
-        return {{"_____FULL__MEMORY______", 0}};
+    const sample MIMOCenter::ALL_MEMORY() {
+        return {{"____ALL_MEMORY____", std::any()}};
+    }
+
+    const sample MIMOCenter::ON_EVERY() {
+        return {{"____ON_EVERY____", std::any()}};
     }
 
 }

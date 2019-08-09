@@ -81,14 +81,11 @@ namespace bt {
         }
 
         for(auto const& p: sort_parsers()) {
-            if(config[p])
-                try {
-                    std::cout << "Parsing " << p << std::endl;
-                    parsers[p]->parse(p, config[p]);
-                }
-                catch (std::exception& e) {
-                    throw std::runtime_error(std::string("Error loading ") + p + ": " + e.what());
-                }
+            if(config[p]) {
+                std::cout << "Parsing " << p << std::endl;
+                parsers[p]->parse(p, config[p]);
+            }
+
         }
 
     }

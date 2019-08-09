@@ -35,8 +35,8 @@ namespace bt {
 
     Node::TickType Node::return_tick_table[FINAL_STATE_ENTRY+1][FINAL_STATE_ENTRY+1] = { //i - changed from, j - changed to
         {NO_TICK, TOPDOWN_RISE, TOPDOWN_RISE, NO_TICK},
-        {BOTTOMUP_RISE, NO_TICK, BOTTOMUP_RISE, NO_TICK},
-        {BOTTOMUP_RISE, BOTTOMUP_RISE, NO_TICK, NO_TICK},
+        {NO_TICK, NO_TICK, BOTTOMUP_RISE, NO_TICK},
+        {NO_TICK, BOTTOMUP_RISE, NO_TICK, NO_TICK},
         {NO_TICK, NO_TICK, NO_TICK, NO_TICK}
     };
 
@@ -74,7 +74,7 @@ namespace bt {
 
 
     Node::Node(std::string id, MemoryBase& vars, std::string classifier) : _id(id), vars(vars),
-    _classifier(classifier), hide_further(false) {
+    _classifier(classifier), hide_further(false), visited(false) {
         vars.add(state_var(), VarScope::INNER, double(Node::UNDEFINED));
     }
 
@@ -148,10 +148,13 @@ namespace bt {
     Node::tick_return_type Sequential::tick(TickType tick_type) {
         auto tick_children = get_call_table(state(), tick_type);
         auto _old_state = state();
+        if(visited && false)
+            tick_children = NO_TICK;
         std::cout << "tick " << id() << ' ' << STATE(state()) << ' ' << TICK_TYPE(tick_type) << std::endl;
         vars.set(state_var(), (double)evaluate(tick_children));
         start_deactivation(tick_type, return_tick(_old_state, state()));
 
+        visited = true;
         return return_tick(_old_state, state());
     }
 
@@ -300,9 +303,11 @@ namespace bt {
 
     Node::tick_return_type Condition::tick(TickType tick_type) {
         auto _old_state = state();
+        if(visited && false)
+            tick_type = NO_TICK;
         if(tick_type != DEACTIVATION_RUN && tick_type != DEACTIVATION_AFTER)
             vars.set(state_var(), (double)evaluate(tick_type));
-
+        visited = true;
         return return_tick(_old_state, state());
     }
 
@@ -334,7 +339,10 @@ namespace bt {
 
     Node::tick_return_type Action::tick(TickType tick_type) {
         auto _old_state = state();
+        if(visited && false)
+            tick_type = NO_TICK;
         vars.set(state_var(), (double)evaluate(tick_type));
+        visited = true;
         return return_tick(_old_state, state());
 
     }

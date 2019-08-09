@@ -15,11 +15,13 @@
 #include <iostream>
 #include <unordered_set>
 #include <iomanip>
+#include "Node.h"
 
 namespace bt {
     class MemoryJS : public MemoryBase {
         duk_context* ctx;
         std::unordered_set<std::string> known_vars;
+        std::ofstream L;
     private:
         void create_proxy() {
             duk_eval_string(ctx, R"()");
@@ -35,6 +37,7 @@ namespace bt {
         }
 
         void eval_with_exception_noresult(std::string const& eval_str, std::string const& error_str) {
+            L << eval_str << std::endl;
             duk_push_string(ctx, eval_str.c_str());
             if(duk_peval_noresult(ctx) != 0) {
                 throw std::runtime_error(error_str);
@@ -42,11 +45,13 @@ namespace bt {
         }
 
         void eval_with_exception(std::string const& eval_str, std::string const& error_str) {
+            L << eval_str << std::endl;
             duk_push_string(ctx, eval_str.c_str());
             if(duk_peval(ctx) != 0) {
                 throw std::runtime_error(error_str);
             }
         }
+
 
         static std::string get_from_any(std::any const& a, std::string const& key) {
             std::string s;
@@ -105,7 +110,7 @@ namespace bt {
         }
 
     public:
-        explicit MemoryJS(std::string const& file = "../src/tests/embedjs/memory.js") : MemoryBase() {
+        explicit MemoryJS(std::string const& file = "../src/tests/embedjs/memory.js") : MemoryBase(), L("memorylogs.txt") {
             ctx = duk_create_heap_default();
             std::ifstream memory_js_lib(file);
             std::string content( (std::istreambuf_iterator<char>(memory_js_lib) ),
@@ -124,6 +129,7 @@ namespace bt {
             std::string init_str = get_from_any(init, key);
 
             cmd << "add('" << get_scope_name(scope) << "', " << init_str  << ", '" << key << "');";
+            std::cout << cmd.str() << std::endl;
             std::string const& cmd_str = cmd.str();
             eval_with_exception_noresult(cmd_str,
              "Error: wrong parameters for add function! key: " + key + ", scope: "
@@ -145,10 +151,22 @@ namespace bt {
             eval_with_exception(expr, "Error: bad expression provided: \"" + expr + "\"!");
         }
 
+        void eval_action(std::string const& expr) override {
+            eval(expr);
+            //__simple_call("poll_changes();apply_changes();");
+        }
+
         void set(std::string const& key, std::any const& v) override {
             std::string json_v = get_from_any(v, key);
-            std::cout <<"memset " << key + " = " + json_v + ";" << std::endl;
+
+            std::string state = "__STATE__";
+            std::string to_print = json_v;
+            if(key.substr(0,state.size()) == state)
+                to_print = bt::STATE(to_print[0]-'0');
+            std::cout <<"memset " << key + " = " + to_print + ";" << std::endl;
+
             eval(key + " = " + json_v + ";");
+            //__simple_call("poll_changes();apply_changes();");
         }
 
         std::any get(std::string const& key) override {
@@ -197,7 +215,15 @@ namespace bt {
         }
 
         void set_expr(std::string const& key, std::string const& expr) override {
+            std::cout <<"memset " << key + " = " + expr + ";" << std::endl;
             eval(key + " = " + expr);
+            //__simple_call("poll_changes();apply_changes();");
+            auto sample = get_changes("output");
+            L << "changed";
+            for(auto const& kv: sample) {
+                L << ' ' <<  kv.first;
+            }
+            L << std::endl;
         }
 
         bool eval_bool(std::string const& expr) override {
@@ -207,7 +233,7 @@ namespace bt {
         }
 
         bool has_var(std::string const& key) override {
-            return eval_bool("\"" + key + "\" in window");
+            return eval_bool("\"" + key + "\" in window.___reg");
         }
 
         bool test_expr(std::string const& expr) override {

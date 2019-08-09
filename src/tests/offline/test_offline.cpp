@@ -1,16 +1,22 @@
 //
-// Created by safoex on 16.07.19.
+// Created by safoex on 06.08.19.
 //
 
-#include <parser/Builder.h>
-#include "parser/Parsers.h"
+
+#include "defs.h"
+
+#include <yaml-cpp/yaml.h>
 #include "Tree.h"
+#include "parser/Parsers.h"
 #include "memory/MemoryJS.h"
 #include "io/MIMOCenter.h"
+#include "io/cpp/CPPFunctionParser.h"
+#include "io/offline_tests/OfflineTestChannel.h"
+#include <iostream>
 
 using namespace bt;
-
 int main() {
+
     MemoryJS memory;
     Tree tree(memory, "test");
     Builder builder(&tree);
@@ -37,20 +43,36 @@ int main() {
     np->registerModule("template", tp);
 
     parser.registerModule("templates", tp);
-    parser.loadYamlFile("../src/tests/template_parser/test_template_parser.yaml");
+
+
+    std::string TEST = "latch";
+
+    parser.loadYamlFile("../src/tests/offline/" + TEST +"/test.yaml");
+
 
 //    parser.loadYamlFile("../config/test.yaml");
     builder.make_graph();
 
     std::ofstream test_gv("test_gv_tree.txt");
-    test_gv << builder.get_dot_description(Builder::DOT) << std::endl;
+//    test_gv << builder.get_dot_description(Builder::DOT) << std::endl;
+    test_gv << tree.dot_tree_description(false) << std::endl;
     system("dot -Tpdf test_gv_tree.txt > tree.pdf");
 
-//    tree.start();
-//    std::ofstream test_results("output.yaml");
-//    test_results << tp.apply_samples("../config/input.yaml");
+    OfflineTestChannel offline_tests(&mimo);
+
+
+    std::cout << "------------- CHECK values -----------" << std::endl;
+    for(auto v: {"_L_mem"})
+        std::cout << v << ": " << tree.get_memory().get_string(v).value() << std::endl;
+
+    mimo.start();
+
+    std::ifstream in("../src/tests/offline/" + TEST +"/input.yaml");
+    std::ofstream out("../src/tests/offline/" + TEST +"/output.yaml");
+    offline_tests.apply_tests(in, out);
 
     std::ofstream test_states("test_states.txt");
-    test_states << tree.dot_tree_description(true) << std::endl;
+    test_states << tree.dot_tree_description(true);
     system("dot -Tpdf test_states.txt > states.pdf");
+
 }

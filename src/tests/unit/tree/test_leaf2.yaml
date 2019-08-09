@@ -17,11 +17,15 @@ functions:
       name: iCub_move
 
 variables:
-  input: ["error_code", "START_FLIGHT_ERROR", "cmd_flight_start_response", "start_tree", "SIG_skip", "SIG_go", "time", "__function_icub_move_return"]
-  output_no_send_zero: ["cmd_flight_start", "cmd_emergency_land", "skip", "go", "__function_icub_start_call", "__function_icub_move_call"]
+  input: ["RUNNING", "SUCCESS", "FAILED", "UNDEFINED", "error_code", "START_FLIGHT_ERROR", "cmd_flight_start_response", "start_tree", "SIG_skip", "SIG_go", "time", "__function_icub_move_return"]
+  output_no_send_zero: ["cmd_flight_start", "cmd_emergency_land", "skip", "go"]
   output: ["times1"]
 
 set:
+  RUNNING: 0
+  SUCCESS: 1
+  FAILED: 2
+  UNDEFINED: 3
   START_FLIGHT_ERROR: 5
   start_tree: 777
   times1: 3
@@ -41,17 +45,8 @@ templates:
 
     nodes:
       $name:
-        type: sequence
-        children: [~fire_once, ~time_wait, ~func_clear]
-
-      ~fire_once:
-        type: t/fire_once
-        child: ~fire_seq
-        id: $id_f_w_t
-
-      ~fire_seq:
-        type: sequence
-        children: [~start_timer, ~func_call]
+        type: t/seq_latches
+        children: [~start_timer, ~func_call, ~time_wait, ~func_clear]
 
       ~start_timer:
         type: t/start_timer
@@ -70,6 +65,9 @@ templates:
         type: action
         assign:
           __function_$function_call: 0
+
+    children: [~start_timer, ~func_call, ~time_wait, ~func_clear]
+
 
   function_w_timeout_reset:
     args:
@@ -153,12 +151,13 @@ templates:
         R: default
         S: time - $id__timer_started_at > $id__timer_delay
 
+
   function:
     args:
       required: [function]
 
     var:
-      __function_$function_call: [output_no_send_zero, 0]
+      __function_$function_call: [output, 0]
       __function_$function_return: [input, 0]
       
     nodes:
@@ -198,79 +197,154 @@ templates:
       required: [child]
       optional:
         mem: ~mem
+        state: ~state
 
     var:
-      ~sub: [input, 0]
+      __STATE__$child: [input, UNDEFINED]
       $mem: [input, 0]
-    
+      $state: [input, UNDEFINED]
+
+
     nodes:
       $name:
         type: skipper
-        children: [~cond, ~sel]
+        children: [~mask_seq, $child]
 
-      ~cond:
-        type: condition
-        S: ~sub == 1 && $mem == 1
-        F: ~sub == 2 && $mem == 1
-        R: default
-
-      ~sel:
-        type: selector
-        children: [~seq, ~remember_F]
-
-      ~seq:
+      ~mask_seq:
         type: sequence
-        children: [$child, ~remember_S]
+        children: [~mask_sel, ~mask]
 
-      ~remember_F:
+      ~mask_sel:
+        type: selector
+        children: [~mask_set_state_if, ~mask_set_state_seq]
+
+      ~mask_set_state_if:
+        type: condition
+        S: $mem == 1
+        F: default
+
+      ~mask_set_state_seq:
+        type: sequence
+        children: [~mask_set_state, ~mask_finish_state_sel]
+
+      ~mask_set_state:
+        type: action
+        assign:
+          $state: __STATE__$child
+
+      ~mask_finish_state_sel:
+        type: selector
+        children: [~mask_finish_state_if, ~mask_finish_state]
+
+      ~mask_finish_state_if:
+        type: condition
+        F: $state == SUCCESS || $state == FAILED
+        S: default
+
+      ~mask_finish_state:
         type: action
         assign:
           $mem: 1
-          ~sub: 2
 
-      ~remember_S:
-        type: action
-        assign:
-          $mem: 1
-          ~sub: 1
+      ~mask:
+        type: condition
+        S: $state == SUCCESS
+        F: $state == FAILED
+        R: default
 
     children: [$child]
 
-  seq_w_latches:
+  latch_simple:
     args:
-      required: [child1, child2]
+      required: [child]
+
+    var:
+      __STATE__$child: [input, UNDEFINED]
+
+    nodes:
+      $name:
+        type: skipper
+        children: [~mask, $child]
+
+      ~mask:
+        type: condition
+        S: __STATE__$child == SUCCESS
+        F: __STATE__$child == FAILED
+        R: default
+
+    children: [$child]
+
+  reset:
+    args:
+      required: [child]
+
+    var:
+      __STATE__$child: [input, UNDEFINED]
+
+    nodes:
+      $name:
+        type: action
+        assign:
+          __STATE__$child: UNDEFINED
+
+  seq_latches:
+    args:
+      required: [children]
+      construct:
+        _children_latched:
+          from: children
+          V: $V_latch
+      view_exclude: [children]
 
     nodes:
       $name:
         type: sequence
-        children: [~latch1, ~latch2]
+        children: $_children_latched
 
-      ~latch1:
-        type: t/latch
-        child: $child1
+    unpack:
+      children:
+        nodes:
+          $V_latch:
+            type: t/latch_simple
+            child: $V
 
-      ~latch2:
-        type: t/latch
-        child: $child2
+    children: $children
 
-    children: [$child1, $child2]
-
-  sequence_star:
+  control:
     args:
-      required: [...children]
+      required: [children, _type]
+      view_exclude: [children]
+
+    nodes:
+      $name:
+        type: $_type
+        children: $children
+
+    children: $children
+
+  action_return:
+    args:
+      required: [assign]
+      optional:
+        return: S
+      view_exclude: [assign]
 
     nodes:
       $name:
         type: sequence
-        children: [...$children_latch]
+        children: [~act, ~cond]
+      ~act:
+        type: action
+        assign: $assign
+      ~cond:
+        type: condition
+        $return: default
 
-      ...$children:
-        $children: child
-        $children_index: cit
-        nodes: nodes
+    children: [~act]
 
 
-    children: [...$children_latch]
+
+
 
 
 nodes:
@@ -302,7 +376,8 @@ nodes:
 
   main_sequence:
     type: sequence
-    children: [on_start_tree, move_icub_1,  move_icub_3, move_icub_4, move_icub_5, move_icub_2, tree_body]
+    children: [on_start_tree, move_icub_1,  move_icub_3, move_icub_4]
+#    , move_icub_5, move_icub_2, tree_body]
 
   on_start_tree:
     type: condition
@@ -315,31 +390,31 @@ nodes:
     type: t/function_w_timeout
     function: icub_move
     id: icub_1
-    delay: 3
+    delay: 5
 
   move_icub_2:
     type: t/function_w_timeout
     function: icub_move
     id: icub_2
-    delay: 3
+    delay: 5
 
   move_icub_3:
     type: t/function_w_timeout
     function: icub_move
     id: icub_3
-    delay: 3
+    delay: 5
 
   move_icub_4:
     type: t/function_w_timeout
     function: icub_move
     id: icub_4
-    delay: 3
+    delay: 5
 
   move_icub_5:
     type: t/function_w_timeout
     function: icub_move
     id: icub_5
-    delay: 3
+    delay: 5
 
 
   tree_body:
@@ -378,9 +453,10 @@ nodes:
     R: default
 
   seq_latches:
-    type: t/seq_w_latches
-    child1: on_go_act1
-    child2: on_go_act2
+    type: t/seq_latches
+    children:
+      - on_go_act1
+      - on_go_act2
 
   on_go_act2:
     type: action

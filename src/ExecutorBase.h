@@ -5,7 +5,7 @@
 #ifndef ABTM_EXECUTORBASE_H
 #define ABTM_EXECUTORBASE_H
 
-#include "Memory.h"
+#include "memory/MemoryBase.h"
 #include "defs.h"
 #include <any>
 
@@ -17,6 +17,7 @@ namespace bt {
         virtual sample init() = 0;
         virtual sample& update_sample(sample& s) = 0;
         virtual sample update_sample(sample const& s) const = 0;
+        virtual MemoryBase& get_memory() = 0;
         virtual ~ExecutorBase() = default;
     };
 }
