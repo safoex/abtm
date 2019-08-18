@@ -23,20 +23,22 @@ namespace bt{
                 SFR[f.first.as<std::string>()] = f.second.as<std::string>();
         }
 
-        bool all_tested = true;
-        std::stringstream err_msg;
-        for(auto const& lr: SFR) {
-            if(lr.second != "default" && !lr.second.empty()) {
-                bool valid = builder.tree->get_memory().test_expr(lr.second);
-                if (!valid) {
-                    err_msg << "\tInvalid block: " << lr.first << ": " << lr.second << std::endl;
+        if(!node["throw"] || node["throw"].as<std::string>() == "yes") {
+            bool all_tested = true;
+            std::stringstream err_msg;
+            for (auto const &lr: SFR) {
+                if (lr.second != "default" && !lr.second.empty()) {
+                    bool valid = builder.tree->get_memory().test_expr(lr.second);
+                    if (!valid) {
+                        err_msg << "\tInvalid block: " << lr.first << ": " << lr.second << std::endl;
+                    }
+                    all_tested &= valid;
                 }
-                all_tested &= valid;
             }
-        }
 
-        if(!all_tested) {
-            throw std::runtime_error("Error while loading action " + id + "\n" + err_msg.str());
+            if (!all_tested) {
+                throw std::runtime_error("Error while loading action " + id + "\n" + err_msg.str());
+            }
         }
         // used vars
         if(!node["used_vars"]) {

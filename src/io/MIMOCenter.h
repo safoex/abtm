@@ -60,6 +60,8 @@ namespace bt {
         //thread safety
         mutex lock;
 
+        bool started;
+
         sample sample_for_channel(IOBase* ch, sample const& s);
 
     public:

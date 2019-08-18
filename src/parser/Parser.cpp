@@ -80,18 +80,23 @@ namespace bt {
             throw YAML::Exception(YAML::Mark::null_mark(), "smth wrong with tree description file " + (std::string)e.what());
         }
 
-        for(auto const& p: sort_parsers()) {
-            if(config[p]) {
-                std::cout << "Parsing " << p << std::endl;
-                parsers[p]->parse(p, config[p]);
-            }
-
-        }
+        parseMap(config);
 
     }
 
+    void Parser::parseMap(YAML::Node const &yaml_map) {
+        for(auto const& p: sort_parsers()) {
+            if(yaml_map[p]) {
+                std::cout << "Parsing " << p << std::endl;
+                parsers[p]->parse(p, yaml_map[p]);
+            }
+        }
+    }
+
     void Parser::parse(std::string const &id, YAML::Node const &yaml_node) {
-        parsers[id]->parse(id, yaml_node);
+        if(parsers.count(id))
+            parsers[id]->parse(id, yaml_node);
+//        else throw std::runtime_error("Error, no parser provided for " + id);
         // TEMPORARY HACK
     }
 

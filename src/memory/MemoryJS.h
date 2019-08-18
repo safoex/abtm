@@ -22,6 +22,8 @@ namespace bt {
         duk_context* ctx;
         std::unordered_set<std::string> known_vars;
         std::ofstream L;
+        int count_threads;
+        std::mutex _mutex;
     private:
         void create_proxy() {
             duk_eval_string(ctx, R"()");
@@ -36,16 +38,31 @@ namespace bt {
             }
         }
 
+        std::ostream&  write_logs(std::ostream& os, std::string const& eval_str = "", bool need_to_log_window = true) {
+            os << eval_str << '\t' << duk_get_top(ctx) << '\t' << count_threads << std::endl;
+            if(need_to_log_window) {
+                duk_push_string(ctx, "log_window();");
+                if (duk_peval(ctx) != 0) {
+                    throw std::runtime_error("log window");
+                }
+                os << duk_get_string(ctx, -1) << std::endl;
+            }
+            return os;
+        }
+
         void eval_with_exception_noresult(std::string const& eval_str, std::string const& error_str) {
-            L << eval_str << std::endl;
+            std::lock_guard lock(_mutex);
+            write_logs(L, eval_str, false);
             duk_push_string(ctx, eval_str.c_str());
             if(duk_peval_noresult(ctx) != 0) {
                 throw std::runtime_error(error_str);
             }
+
         }
 
         void eval_with_exception(std::string const& eval_str, std::string const& error_str) {
-            L << eval_str << std::endl;
+            std::lock_guard lock(_mutex);
+            write_logs(L, eval_str, false);
             duk_push_string(ctx, eval_str.c_str());
             if(duk_peval(ctx) != 0) {
                 throw std::runtime_error(error_str);
@@ -109,17 +126,27 @@ namespace bt {
             return result;
         }
 
+        void clear_duk_stack() {
+            while(duk_get_top(ctx) > 1000) {
+                duk_pop(ctx);
+            }
+        }
+
     public:
-        explicit MemoryJS(std::string const& file = "../src/tests/embedjs/memory.js") : MemoryBase(), L("memorylogs.txt") {
-            ctx = duk_create_heap_default();
+        void import_file(std::string const& file) {
             std::ifstream memory_js_lib(file);
             std::string content( (std::istreambuf_iterator<char>(memory_js_lib) ),
                                  (std::istreambuf_iterator<char>()    ) );
 
-            duk_eval_string(ctx, content.c_str());
-            eval_with_exception_noresult(content, "Error: bad javascript memory library provided!");
-
+            eval_with_exception_noresult(content, "Error: bad javascript memory library (" + file + ") provided!");
         }
+        explicit MemoryJS(std::string const& file = "../src/memory/memory.js") : MemoryBase(), L("memorylogs.txt") {
+            ctx = duk_create_heap_default();
+            count_threads = 0;
+            import_file(file);
+        }
+
+
 
         void add(std::string const& key, VarScope scope, std::any const& init) override {
             std::stringstream cmd;
@@ -128,14 +155,13 @@ namespace bt {
 
             std::string init_str = get_from_any(init, key);
 
-            cmd << "add('" << get_scope_name(scope) << "', " << init_str  << ", '" << key << "');";
+            cmd << "add('" << get_scope_name(scope) << "', " << init_str  << ", \"" << key << "\");";
             std::cout << cmd.str() << std::endl;
             std::string const& cmd_str = cmd.str();
             eval_with_exception_noresult(cmd_str,
              "Error: wrong parameters for add function! key: " + key + ", scope: "
              + get_scope_name(scope) + ", init: " + init_str
             );
-
             known_vars.insert(key);
         }
 
@@ -176,6 +202,7 @@ namespace bt {
         std::optional<double> get_double(std::string const& key) override {
             rapidjson::Document d;
             d.Parse(get_string(key).value().c_str());
+            clear_duk_stack();
             if(d.IsDouble()) return d.GetDouble();
             else if(d.IsInt64()) return d.GetInt64();
             else return {};
@@ -189,8 +216,10 @@ namespace bt {
         }
 
         std::optional<std::string> get_string(std::string const& key) override {
-            eval("Duktape.enc('jc', window[\"" + key + "\"])");
-            return std::string(duk_get_string(ctx, -1));
+            eval(R"(Duktape.enc('jc', get_var(")" + key + R"(")))");
+            auto s =  std::string(duk_get_string(ctx, -1));
+            L << s << std::endl;
+            return s;
         }
 
         sample get_changes(VarScope scope) override {
@@ -233,7 +262,7 @@ namespace bt {
         }
 
         bool has_var(std::string const& key) override {
-            return eval_bool("\"" + key + "\" in window.___reg");
+            return eval_bool("\"" + key + "\" in window");
         }
 
         bool test_expr(std::string const& expr) override {

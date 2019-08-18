@@ -53,6 +53,7 @@ namespace bt {
 
         sample process(sample const& output) override {
             std::string msg_str;
+            std::cout << "ROS processing " << std::endl;
             if(output.count(msg_key)) {
                 try {
                     msg_str = std::any_cast<std::string>(output.at(msg_key));
@@ -61,6 +62,7 @@ namespace bt {
                     throw std::runtime_error("Key " + msg_key + " in sample for topic " + topic_name +" does not contain a std::string");
                 }
             }
+            std::cout << msg_str << std::endl;
             rapidjson::Document d;
             d.Parse(msg_str.c_str());
             rbc.publish(topic_name, d);
@@ -86,7 +88,8 @@ namespace bt {
                 d["msg"].Accept(writer);
 
                 std::cout << buffer.GetString() << std::endl;
-                f({{this->msg_key, buffer.GetString()}});
+                if(this->f)
+                    this->f({{this->msg_key, buffer.GetString()}});
             });
         }
 

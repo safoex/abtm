@@ -45,12 +45,11 @@ namespace bt {
                             throw std::runtime_error("type should be a string in " + p.first.as<std::string>() + " in ROS description");
                         }
                         if(type == "subscriber" || type == "sub" || type == "publisher" || type == "pub") {
-                            std::string msg_key;
-                            std::string msg_type;
-                            std::string trigger_key;
+                            std::string msg_key, msg_type, trigger_key;
                             std::unordered_set<std::string> trigger_keys;
                             load<std::string>(p.second, "var", msg_key);
                             load<std::string>(p.second, "msg", msg_type);
+
                             if(p.second["trigger"] && p.second["trigger"].IsSequence())
                                 for(auto const& tv: p.second["trigger"]) {
                                     trigger_keys.insert(tv.as<std::string>());

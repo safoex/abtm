@@ -9,6 +9,7 @@
 namespace bt {
     MIMOCenter::MIMOCenter(bt::ExecutorBase *executor) : executor(executor) {
         step = 0;
+        started = false;
     }
 
     sample MIMOCenter::sample_for_channel(bt::IOBase *ch, sample const& s) {
@@ -51,7 +52,7 @@ namespace bt {
 
             std::cout << "------- OUTPUT sample ---------" << std::endl;
             for(auto const & p: sample) {
-                std::cout << p.first << '\t';
+                std::cout << p.first << '\t' << std::any_cast<std::string>(p.second) << std::endl;
             }
             std::cout << std::endl << "--------------" << std::endl;
 
@@ -91,8 +92,10 @@ namespace bt {
     }
 
     void MIMOCenter::process(const bt::sample &sample, bt::MIMO_DIRECTION direction, bt::IOBase *channel) {
-        process_once(sample, direction, channel);
-        process();
+        if(started) {
+            process_once(sample, direction, channel);
+            process();
+        }
     }
 
     InputFunction MIMOCenter::registerIOchannel(bt::IOBase *channel, unsigned int priority) {
@@ -113,11 +116,13 @@ namespace bt {
             }
         }
         return [this, channel](sample const& s) {
+            std::cout << "WTF" << std::endl;
             this->process(s, MIMO_INPUT, channel);
         };
     }
 
     void MIMOCenter::start() {
+        started = true;
         process(executor->init(), MIMO_OUTPUT);
     }
 

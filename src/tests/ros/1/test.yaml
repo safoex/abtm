@@ -4,7 +4,7 @@ common:
     online: 1
 
 variables:
-  input: ["RUNNING", "SUCCESS", "FAILED", "UNDEFINED", a,b,c,d, R]
+  input: ["RUNNING", "SUCCESS", "FAILED", "UNDEFINED", a,b,c,d,z, R, fibonacci_goal, time]
   output_no_send_zero: [yy,zz]
   output: [aa,bb,cc,dd, Q]
 
@@ -25,6 +25,7 @@ set:
   dd: 0
   R: "{data: 0}"
   Q: "{}"
+  time: 0
 
 ROS:
   /first:
@@ -133,24 +134,292 @@ templates:
         assign:
           __STATE__$child: UNDEFINED
 
+  on_change:
+    args:
+      required: [child, var]
+      view_exclude: [child]
+
+    var:
+      __old_~: [input, "{}"]
+
+    nodes:
+      $name:
+        type: sequence
+        children: [~enter, $child, ~save, ~never_exit]
+
+      ~enter:
+        type: condition
+        S: ! (M.compare(__old_~, $var))
+        R: default
+
+      ~save:
+        type: action
+        assign:
+          __old_~: copy($var)
+
+      ~never_exit:
+        type: condition
+        R: default
+
+    children: [$child]
+
+
+  ifthen:
+    args:
+      optional:
+        R: "false"
+        S: "false"
+        F: "false"
+        script: " "
+        throw: yes
+      view_exclude: [R,S,F,script]
+    
+    nodes:
+      $name:
+        type: selector
+        children: [~if, ~then]
+        
+      ~if:
+        type: condition
+        S: $S
+        R: $R
+        F: $F
+        throw: $throw
+      
+      ~then:
+        type: action
+        script: $script
+        throw: $throw
+        
+    children: [~if, ~then]
+
+  SimpleActionClient:
+    args:
+      required: [on_pending, on_active, on_done, package, action, goal, client]
+      optional:
+        id: ~id
+
+    var:
+      __$package_$action: [input, "{goals: {},status:0,feedback:0,result:0}"]
+      ~status: [input, 0]
+      ROS.GoalStatus.DONE: [input, 10]
+      ~goal: [output, "{}"]
+      ~cancel: [output, "{}"]
+
+    ROS:
+      /$client/goal:
+        type: publisher
+        var: ~goal
+        msg: $package/$actionActionGoal
+      /$client/cancel:
+        type: publisher
+        var: ~cancel
+        msg: actionlib_msgs/GoalID
+
+      /$client/status:
+        type: subscriber
+        var: __$package_$action.status
+      /$client/feedback:
+        type: subscriber
+        var: __$package_$action.feedback
+      /$client/result:
+        type: subscriber
+        var: __$package_$action.result
+
+
+
+    nodes:
+      $name:
+        type: sequence
+        children: [~send_goal, ~work_until_end]
+
+      ~send_goal:
+        type: sequence
+        children: [~send_goal_send, ~send_goal_preparations]
+
+      ~send_goal_send:
+        type: action
+        assign:
+          ~goal: $goal
+
+      ~send_goal_preparations:
+        type: action
+        script:
+          $id = 'id' + time;
+          if(!('__$package_$action' in window)) {
+          __$package_$action = {goals:{}};
+          };
+          __$package_$action.goals[$id] = {};
+          __$package_$action.goals[$id].done = false;
+          ~goal.goal_id.id = $id;
+
+
+
+      ~work_until_end:
+        type: skipper
+        children: [~update, ~pending, ~active, ~done]
+
+      ~update:
+        type: parallel
+        children: [~update_status, ~update_result]
+
+      ~update_status:
+        type: t/on_change
+        var: __$package_$action.status
+        child: ~update_status_unpack
+
+      ~update_status_unpack:
+        type: action
+        script:
+          for(var goal in __$package_$action.status) {
+            var id = __$package_$action.status[goal].goal_id.id;
+            if(id in __$package_$action.goals) {
+                __$package_$action.goals[id].status = $action.status[goal].status;
+              }
+            }
+
+
+      ~update_result:
+        type: t/on_change
+        var: __$package_$action.status
+        child: ~update_result_unpack
+
+      ~update_result_unpack:
+        type: action
+        script: >
+          {
+            var id = __$package_$action.result.status.goal_id.id;
+            if(id in __$package_$action.goals) {
+              __$package_$action.goals[id].status = __$package_$action.result.status.status;
+              __$package_$action.goals[id].result = __$package_$action.result.result;
+              __$package_$action.goals[id].done = true;
+            }
+          }
+
+
+      ~pending:
+        type: sequence
+        children: [~pending_enter, ~pending_action]
+
+      ~pending_enter:
+        type: condition
+        S: ~status == ROS.GoalStatus.PENDING
+        R: default
+
+      ~pending_action:
+        type: parallel
+        children: [~check_transition_pending_active, ~check_transition_pending_done, ~pending_on_cb]
+
+      ~check_transition_pending_active:
+        type: t/ifthen
+        S: __$package_$action.goals[$id].status == ROS.GoalStatus.ACTIVE || __$package_$action.goals[$id].status == ROS.GoalStatus.PREEMPTING
+        R: default
+        script: ~status = ROS.GoalStatus.ACTIVE
+        throw: no
+          
+      ~check_transition_pending_done:
+        type: t/ifthen
+        S: __$package_$action.goals[$id].done
+        R: default
+        script: ~status = ROS.GoalStatus.DONE
+        throw: no
+      
+      ~pending_on_cb:
+        type: sequence
+        children: [$on_pending, ~on_pending_wait]
+        
+      ~on_pending_wait:
+        type: condition
+        R: default
+        
+      ~active:
+        type: sequence
+        children: [~active_enter, ~active_action]
+
+      ~active_enter:
+        type: condition
+        S: ~status == ROS.GoalStatus.ACTIVE
+        R: default
+
+      ~active_action:
+        type: parallel
+        children: [~check_transition_active_pending, ~check_transition_active_done, ~active_on_cb]
+
+      ~check_transition_active_pending:
+        type: t/ifthen
+        S: __$package_$action.goals[$id].status == ROS.GoalStatus.RECALLING
+        R: default
+        script: ~status = ROS.GoalStatus.PENDING
+        throw: no
+
+      ~check_transition_active_done:
+        type: t/ifthen
+        S: __$package_$action.goals[$id].done
+        R: default
+        script: ~status = ROS.GoalStatus.DONE
+        throw: no
+
+      ~active_on_cb:
+        type: sequence
+        children: [$on_active, ~on_active_wait]
+
+      ~on_active_wait:
+        type: condition
+        R: default
+        
+      ~done:
+        type: sequence
+        children: [~done_enter, ~done_on_cb]
+
+      ~done_enter:
+        type: condition
+        S: ~status == ROS.GoalStatus.DONE
+        R: default
+
+      ~done_on_cb:
+        type: sequence
+        children: [$on_done]
+        
+
+
+
+
+
+
 nodes:
   main:
-    type: sequence
-    children: [A, B, C]
+    type: parallel
+    children: [fibonacci_goal, fibonacci]
 
-  A:
-    type: condition
-    S: R.data == 1
-    R: default
+  fibonacci_goal:
+    type: action
+    script: >
+      fibonacci_goal = ROS.actionlib_tutorials.FibonacciActionGoal();
+      fibonacci_goal.goal.order = 10
 
+  fibonacci:
+    type: t/SimpleActionClient
+    on_pending: A
+    on_active: C
+    on_done: B
+    package: actionlib_tutorials
+    action: Fibonacci
+    goal: fibonacci_goal
+    client: fibonacci
+    
   B:
     type: action
-    script: "Q.data = 'YEAH'"
+    script: "Q.data = 'DONE'"
+
+  A:
+    type: action
+    script: "Q.data = 'PENDING'"
 
   C:
-    type: condition
-    S: R.data == 2
-    R: default
+    type: action
+    script: "Q.data = 'ACTIVE'"
+
+  
 
 
 

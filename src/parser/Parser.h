@@ -28,6 +28,8 @@ namespace bt {
 
         void parse(std::string const& id, YAML::Node const &yaml_node) override;
 
+        void parseMap(YAML::Node const& yaml_map);
+
         void loadYamlFile(std::string const& filename);
     };
 };

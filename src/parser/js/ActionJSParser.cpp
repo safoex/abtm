@@ -32,19 +32,22 @@ namespace bt {
             }
 
             // test expressions:
-            bool all_tested = true;
-            std::stringstream err_msg;
-            for(auto const& lr: lrvalues) {
-                bool valid = builder.tree->get_memory().test_expr(lr.first + " = " + lr.second);
-                classifier += lr.first + ": " + lr.second + '\n';
-                if(!valid) {
-                    err_msg << "\tInvalid assign block: " << lr.first << ": " << lr.second << std::endl;
+            if(!node["throw"] || node["throw"].as<std::string>() == "yes")
+            {
+                bool all_tested = true;
+                std::stringstream err_msg;
+                for (auto const &lr: lrvalues) {
+                    bool valid = builder.tree->get_memory().test_expr(lr.first + " = " + lr.second);
+                    classifier += lr.first + ": " + lr.second + '\n';
+                    if (!valid) {
+                        err_msg << "\tInvalid assign block: " << lr.first << ": " << lr.second << std::endl;
+                    }
+                    all_tested &= valid;
                 }
-                all_tested &= valid;
-            }
 
-            if(!all_tested) {
-                throw std::runtime_error("Error while loading action " + id + "\n" + err_msg.str());
+                if (!all_tested) {
+                    throw std::runtime_error("Error while loading action " + id + "\n" + err_msg.str());
+                }
             }
 
 

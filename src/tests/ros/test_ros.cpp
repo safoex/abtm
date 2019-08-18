@@ -21,7 +21,9 @@ int main() {
     MemoryJS memory;
     Tree tree(memory, "test");
     Builder builder(&tree);
-
+    memory.import_file("../../../libs/rosmsgjs/ros_embed_description.js");
+    memory.get_string("ROS");
+    memory.import_file("../../../libs/rosmsgjs/ros_embed.js");
 
     MIMOCenter mimo(&tree);
 
@@ -35,7 +37,7 @@ int main() {
             {{"sequence", "selector", "skipper", "parallel"}, new ControlNodeParser(builder)}
     });
     Parser parser(builder, {
-            {{"add"}, vinp},
+            {{"add","var"}, vinp},
             {{"nodes"}, np},
             {{"variables"}, new VariablesParser(builder)},
             {{"set"}, new SetVariablesParser(builder)},
@@ -51,10 +53,12 @@ int main() {
     std::string TEST = "1";
 
     parser.loadYamlFile("../src/tests/ros/" + TEST +"/test.yaml");
+    std::cout << "loade yaml file" << std::endl;
 
 
 //    parser.loadYamlFile("../config/test.yaml");
     builder.make_graph();
+    std::cout << "built a tree" << std::endl;
 
     std::ofstream test_gv("test_gv_tree.txt");
 //    test_gv << builder.get_dot_description(Builder::DOT) << std::endl;
@@ -64,12 +68,22 @@ int main() {
 
 
     mimo.start();
+    auto desc = tree.dot_tree_description(true);
+    {
+        std::ofstream test_states("test_states.txt");
+        test_states << desc;
+        system("dot -Tpdf test_states.txt > states.pdf");
+    }
 
     while(1) {
         this_thread::sleep_for(100ms);
-        std::ofstream test_states("test_states.txt");
-        test_states << tree.dot_tree_description(true);
-        system("dot -Tpdf test_states.txt > states.pdf");
+        auto new_desc = tree.dot_tree_description(true);
+        if(desc != new_desc) {
+            std::ofstream test_states("test_states.txt");
+            test_states << new_desc << std::endl;
+            system("dot -Tpdf test_states.txt > states.pdf");
+            desc = new_desc;
+        }
     }
 
 }

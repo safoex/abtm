@@ -8,6 +8,8 @@
 #include <iomanip>
 #include <sstream>
 
+#define TEMPLATE_DEBUG false
+
 namespace string_utils
 {
     std::string escape(std::string str)
@@ -79,7 +81,8 @@ namespace bt {
 
     YAML::Node TemplateParser::reqursively_replace(YAML::Node const &yn, const bt::dictOf<YAML::Node> &rep_args) {
         YAML::Node result;
-        std::cout << yn << std::endl << std::endl;
+        if(TEMPLATE_DEBUG)
+            std::cout << yn << std::endl << std::endl;
         if(yn.IsMap() || yn.IsSequence()) {
             if (yn.IsMap())
                 for (auto const &p: yn)
@@ -97,8 +100,10 @@ namespace bt {
                 result = YAML::Clone(rep_args.at(s.substr(1)));
             }
             else result = yn;
-            std::cout << "!!!!" << s << " was replaced with " << result << std::endl << std::endl;
-            std::cout << s.substr(1) << ' ' << (s.substr(0, var_symbol.length()) == var_symbol) << std::endl;
+            if(TEMPLATE_DEBUG) {
+                std::cout << "!!!!" << s << " was replaced with " << result << std::endl << std::endl;
+                std::cout << s.substr(1) << ' ' << (s.substr(0, var_symbol.length()) == var_symbol) << std::endl;
+            }
             return result;
         }
         else return yn;
@@ -126,8 +131,8 @@ namespace bt {
             auto t = std::regex_replace(templates[template_class], std::regex(name_symbol), "_" + id + "_");
             YAML::Node t_fixed = YAML::Load(t);
 
-
-            std::cout << "parse arguments" << std::endl;
+            if(TEMPLATE_DEBUG)
+                std::cout << "parse arguments" << std::endl;
             // parse arguments
             dictOf<YAML::Node> replace_args;
             YAML::Node replace_args_view;
@@ -227,18 +232,18 @@ namespace bt {
                     }
                 }
             }
-
-            std::cout << "args are: " << std::endl;
-            for(auto const& kv: replace_args) {
-                std::cout << '\t' << kv.first << '\t' << kv.second << std::endl;
-            }
-            std::cout  << std::endl;
+            if(TEMPLATE_DEBUG) {
+                std::cout << "args are: " << std::endl;
+                for (auto const &kv: replace_args) {
+                    std::cout << '\t' << kv.first << '\t' << kv.second << std::endl;
+                }
+                std::cout << std::endl;
 
             // replace args with their subs
 
-            std::cout << "first, unpack all Map/Sequence variables:" << std::endl;
+                std::cout << "first, unpack all Map/Sequence variables:" << std::endl;
             // first, unpack all Map/Sequence variables:
-
+            }
             YAML::Node t_unpacked = t_fixed;
             if(t_fixed["unpack"]) {
                 for(auto const& p: t_fixed["unpack"]) {
@@ -272,17 +277,19 @@ namespace bt {
 
                 }
             }
-            std::cout << "unpacked " << std::endl;
-            std::cout << "-----------------------------" << std::endl;
-            std::cout << t_unpacked << std::endl << std::endl;
-            std::cout << "-----------------------------" << std::endl;
+            if(TEMPLATE_DEBUG) {
+                std::cout << "unpacked " << std::endl;
+                std::cout << "-----------------------------" << std::endl;
+                std::cout << t_unpacked << std::endl << std::endl;
+                std::cout << "-----------------------------" << std::endl;
 
-            std::cout << "second, replace Map/Sequence variables with their subs:" << std::endl;
+                std::cout << "second, replace Map/Sequence variables with their subs:" << std::endl;
+            }
             // second, replace Map/Sequence variables with their subs:
 
             t_unpacked = reqursively_replace(t_unpacked, replace_args);
-
-            std::cout << "third, find-and-replace usual variables:" << std::endl;
+            if(TEMPLATE_DEBUG)
+                std::cout << "third, find-and-replace usual variables:" << std::endl;
             // third, find-and-replace usual variables:
             std::stringstream ss;
             ss << t_unpacked;
@@ -301,19 +308,30 @@ namespace bt {
 
             t_fixed = YAML::Load(t_str);
 
-            std::cout << "finally unpacked and blahblah" << std::endl;
-            std::cout << "-----------------------------" << std::endl;
-            std::cout << t_fixed << std::endl <<  std::endl;
-            std::cout << "-----------------------------" << std::endl;
-
-            // load extra variables
-            if(t_fixed["var"]) {
-                std::cout << "adding var for " + id << std::endl;
-                parser->parse("add", t_fixed["var"]);
+            if(TEMPLATE_DEBUG) {
+                std::cout << "finally unpacked and blahblah" << std::endl;
+                std::cout << "-----------------------------" << std::endl;
+                std::cout << t_fixed << std::endl << std::endl;
+                std::cout << "-----------------------------" << std::endl;
             }
 
+            // load extra variables
+            for(auto const& kv: t_fixed) {
+                auto k = kv.first.as<std::string>();
+//                try {
+//                    parser->parse(k, kv.second);
+//                }
+            }
+
+//            if(t_fixed["var"]) {
+//                std::cout << "adding var for " + id << std::endl;
+//                parser->parse("add", t_fixed["var"]);
+//            }
+
+            std::cout << t_fixed << std::endl;
+            parser->parseMap(t_fixed);
             // load nodes
-            nodesParser->parse("nodes", t_fixed["nodes"]);
+//            nodesParser->parse("nodes", t_fixed["nodes"]);
 
 
             // get fake children for visualization

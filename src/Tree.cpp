@@ -69,12 +69,14 @@ namespace bt {
         int i = 0;
         for(auto const& c: cond_candidates) {
             i++;
-            auto state_after = nodes[c].node->evaluate(Node::TOPDOWN_FALL);
 //            DEBUG_PR("any cond changed " << i << ": " << nodes[c].node->id() + " " + STATE(nodes[c].node->state()) + " " + STATE(state_after));
 
             auto p = Node::return_tick_table[nodes[c].node->state()][nodes[c].node->evaluate(Node::BOTTOMUP_FALL)];
             if(p == Node::BOTTOMUP_RISE || p == Node::TOPDOWN_RISE)
                 return true;
+            else {
+                nodes[c].node->tick(Node::BOTTOMUP_FALL);
+            }
         }
 //        return !saved_conditions.empty();
         return false;
@@ -238,7 +240,7 @@ namespace bt {
         add_base_node(parent_name, node, where);
         for(auto const& v: node->get_used_vars()) {
             if(!memory.has_var(v))
-                memory.add(v, VarScope::INNER, double(0));
+                throw std::runtime_error("Node " + node->id() + " has undefined var \"" + v + "\"");
             var_in_cond[v].insert(node->id());
         }
     }
@@ -301,10 +303,14 @@ namespace bt {
             if(n->node_class() == Node::Condition) {
                 auto c = dynamic_cast<Condition*>(n);
                 desc += "\n" + n->classifier();
-                for(auto const& v: c->get_used_vars()) {
-                    desc += "\n" + v + ":\t" + std::any_cast<std::string>(memory.get(v));
-                }
+//                for(auto const& v: c->get_used_vars()) {
+//                if(v != "M")
+//                    desc += "\n" + v + ":\t" + std::any_cast<std::string>(memory.get(v));
+//                }
             }
+            for(int i = 0;i < desc.length(); i++)
+                if(desc[i] == '"')
+                    desc[i] = ' ';
         }
         else
             desc = n->classifier();

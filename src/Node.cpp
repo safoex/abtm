@@ -311,6 +311,17 @@ namespace bt {
         return return_tick(_old_state, state());
     }
 
+    Node::tick_return_type Condition::evaluate_and_return_tick_type(bt::Node::TickType tick_type)  {
+        auto _old_state = state();
+        auto _new_state = _old_state;
+        if(visited && false)
+            tick_type = NO_TICK;
+        if(tick_type != DEACTIVATION_RUN && tick_type != DEACTIVATION_AFTER)
+            _new_state = evaluate(tick_type);
+        visited = true;
+        return return_tick(_old_state, _new_state);
+    }
+
     Node::State Condition::evaluate(TickType tick_type) {
         Node::State state(Node::RUNNING);
         try {

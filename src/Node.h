@@ -177,6 +177,7 @@ namespace bt {
                            std::unordered_set<std::string> const &used_vars = std::unordered_set<std::string>(),
                            std::string classifier = "");
         Condition& operator=(const Condition& other);
+        tick_return_type evaluate_and_return_tick_type(TickType tick_type);
         NodeClass node_class() const override;
     };
 
