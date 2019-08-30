@@ -145,7 +145,7 @@ namespace bt {
             auto old_s = nodes[c].node->state();
             auto s = nodes[c].node->evaluate(Node::BOTTOMUP_FALL);
             std::pair<Node::State, Node::TickType> p(s, Node::return_tick_table[old_s][s]);
-            std::cout << "COND\t" << c << ' ' << STATE(old_s) << "\t" << STATE(s) << "\t" << TICK_TYPE(p.second) << std::endl;
+//            std::cout << "COND\t" << c << ' ' << STATE(old_s) << "\t" << STATE(s) << "\t" << TICK_TYPE(p.second) << std::endl;
 //            auto p = nodes[c].node->tick();
 //            std::cout << "\t\t" << '\t' << STATE(p.first) << std::endl;
 //            std::cout << "\t\t" << TICK_TYPE(p.second) << "\t" << TICK_TYPE(p2.second) << std::endl;
@@ -303,10 +303,10 @@ namespace bt {
             if(n->node_class() == Node::Condition) {
                 auto c = dynamic_cast<Condition*>(n);
                 desc += "\n" + n->classifier();
-//                for(auto const& v: c->get_used_vars()) {
-//                if(v != "M")
-//                    desc += "\n" + v + ":\t" + std::any_cast<std::string>(memory.get(v));
-//                }
+                for(auto const& v: c->get_used_vars()) {
+                if(v != "M" && v.substr(0,3) != "ROS")
+                    desc += "\n" + v + ":\t" + std::any_cast<std::string>(memory.get(v));
+                }
             }
             for(int i = 0;i < desc.length(); i++)
                 if(desc[i] == '"')

@@ -19,10 +19,14 @@ using namespace bt;
 int main() {
 
     MemoryJS memory;
+    std::cout << "created memory" << std::endl;
     Tree tree(memory, "test");
+    std::cout << "created tree" << std::endl;
     Builder builder(&tree);
+
+    std::cout << "created builder" << std::endl;
     memory.import_file("../../../libs/rosmsgjs/ros_embed_description.js");
-    memory.get_string("ROS");
+//    memory.get_string("ROS");
     memory.import_file("../../../libs/rosmsgjs/ros_embed.js");
 
     MIMOCenter mimo(&tree);

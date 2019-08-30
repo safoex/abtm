@@ -150,7 +150,7 @@ namespace bt {
         auto _old_state = state();
         if(visited && false)
             tick_children = NO_TICK;
-        std::cout << "tick " << id() << ' ' << STATE(state()) << ' ' << TICK_TYPE(tick_type) << std::endl;
+//        std::cout << "tick " << id() << ' ' << STATE(state()) << ' ' << TICK_TYPE(tick_type) << std::endl;
         vars.set(state_var(), (double)evaluate(tick_children));
         start_deactivation(tick_type, return_tick(_old_state, state()));
 
@@ -183,7 +183,7 @@ namespace bt {
     Node::State Sequential::evaluate(TickType tick_type) {
         if(tick_type == NO_TICK)
             return state();
-        std::cout << "eval " <<  id() << ' ' << TICK_TYPE(tick_type) << std::endl;
+//        std::cout << "eval " <<  id() << ' ' << TICK_TYPE(tick_type) << std::endl;
         if(tick_type != DEACTIVATION_RUN && tick_type != DEACTIVATION_AFTER) {
             for (auto &child : children) {
                 auto status = child->tick(tick_type);
@@ -365,7 +365,7 @@ namespace bt {
             catch(std::exception const& e) {
                 DEBUG_PR("exception in action " + id());
             }
-            LOG_DEBUG("action " + classifier() + " called");
+//            LOG_DEBUG("action " + classifier() + " called");
         }
         return Node::SUCCESS;
     }

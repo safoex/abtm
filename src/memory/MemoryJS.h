@@ -7,6 +7,7 @@
 
 #include <defs.h>
 #include <duktape.h>
+#include <duk_logging.h>
 #include "MemoryBase.h"
 #include <fstream>
 #include <sstream>
@@ -17,6 +18,8 @@
 #include <iomanip>
 #include "Node.h"
 
+#define MEM_DEBUG false
+
 namespace bt {
     class MemoryJS : public MemoryBase {
         duk_context* ctx;
@@ -25,9 +28,6 @@ namespace bt {
         int count_threads;
         std::mutex _mutex;
     private:
-        void create_proxy() {
-            duk_eval_string(ctx, R"()");
-        }
         std::string get_scope_name(VarScope scope) {
             switch(scope) {
                 case VarScope ::INNER: return "input"; break;
@@ -51,7 +51,7 @@ namespace bt {
         }
 
         void eval_with_exception_noresult(std::string const& eval_str, std::string const& error_str) {
-            std::lock_guard lock(_mutex);
+
             write_logs(L, eval_str, false);
             duk_push_string(ctx, eval_str.c_str());
             if(duk_peval_noresult(ctx) != 0) {
@@ -61,7 +61,7 @@ namespace bt {
         }
 
         void eval_with_exception(std::string const& eval_str, std::string const& error_str) {
-            std::lock_guard lock(_mutex);
+
             write_logs(L, eval_str, false);
             duk_push_string(ctx, eval_str.c_str());
             if(duk_peval(ctx) != 0) {
@@ -96,26 +96,14 @@ namespace bt {
             return s;
         }
 
-        inline void __simple_call(std::string const& func) {
-            eval_with_exception(func, "Error: something wrong with " +func + "!");
-        }
-
-        inline void restore_changes(VarScope scope) {
-            __simple_call("restore_changes(\"" + get_scope_name(scope) + "\");");
-        }
-
-        inline void restore_changes() {
-            __simple_call("restore_changes();");
-        }
-
         void clear_changes(std::string const& scope) {
-            __simple_call("apply_changes(\"" + scope+ "\");clear_changes(\"" + scope + "\")");
+            eval("apply_changes(\"" + scope+ "\");clear_changes(\"" + scope + "\")", false);
         }
 
         sample get_changes(std::string const& scope) {
-            __simple_call("poll_changes(\"" + scope + "\");");
-            __simple_call("get_changes(\"" + scope + "\");");
-            std::string json_changes = duk_get_string(ctx, -1);
+            eval("poll_changes(\"" + scope + "\");", false);
+            eval("get_changes(\"" + scope + "\");", false);
+            std::string json_changes(duk_get_string(ctx, -1));
             rapidjson::Document d;
             d.Parse(json_changes.c_str());
             sample result;
@@ -134,14 +122,20 @@ namespace bt {
 
     public:
         void import_file(std::string const& file) {
+            if(MEM_DEBUG) std::cout << "entered import file " << std::endl;
+            std::lock_guard lock(_mutex);
             std::ifstream memory_js_lib(file);
             std::string content( (std::istreambuf_iterator<char>(memory_js_lib) ),
                                  (std::istreambuf_iterator<char>()    ) );
 
             eval_with_exception_noresult(content, "Error: bad javascript memory library (" + file + ") provided!");
+            if(MEM_DEBUG) std::cout << "exited import file " << std::endl;
+
         }
         explicit MemoryJS(std::string const& file = "../src/memory/memory.js") : MemoryBase(), L("memorylogs.txt") {
             ctx = duk_create_heap_default();
+            duk_logging_init(ctx,0);
+            duk_require_stack(ctx, 100000);
             count_threads = 0;
             import_file(file);
         }
@@ -149,20 +143,26 @@ namespace bt {
 
 
         void add(std::string const& key, VarScope scope, std::any const& init) override {
+            if(MEM_DEBUG) std::cout << "entered add" << std::endl;
+            std::lock_guard lock(_mutex);
             std::stringstream cmd;
 
-            if(has_var(key)) return;
+            eval("\"" + key + "\" in window", false);
+            if((bool)duk_get_boolean(ctx, -1))
+                return;
 
             std::string init_str = get_from_any(init, key);
 
             cmd << "add('" << get_scope_name(scope) << "', " << init_str  << ", \"" << key << "\");";
-            std::cout << cmd.str() << std::endl;
+//            std::cout << cmd.str() << std::endl;
             std::string const& cmd_str = cmd.str();
             eval_with_exception_noresult(cmd_str,
              "Error: wrong parameters for add function! key: " + key + ", scope: "
              + get_scope_name(scope) + ", init: " + init_str
             );
             known_vars.insert(key);
+
+            if(MEM_DEBUG) std::cout << "exited add" << std::endl;
         }
 
         std::unordered_set<std::string> const& get_known_vars() override {
@@ -174,41 +174,50 @@ namespace bt {
         }
 
         void eval(std::string const& expr) override {
-            eval_with_exception(expr, "Error: bad expression provided: \"" + expr + "\"!");
+            eval(expr, true);
+        }
+
+        void eval(std::string const& expr, bool need_to_lock) {
+            if(MEM_DEBUG) std::cout << "entered eval " << expr << std::endl;
+            if(need_to_lock) {
+                std::lock_guard lock(_mutex);
+                eval_with_exception(expr, "Error: bad expression provided: \"" + expr + "\"!");
+            }
+            else {
+                eval_with_exception(expr, "Error: bad expression provided: \"" + expr + "\"!");
+            }
+            if(MEM_DEBUG) std::cout << "exited eval " << expr << std::endl;
         }
 
         void eval_action(std::string const& expr) override {
-            eval(expr);
-            //__simple_call("poll_changes();apply_changes();");
+            eval(expr, true);
         }
 
         void set(std::string const& key, std::any const& v) override {
+            if(MEM_DEBUG) std::cout << "entered set " << key << std::endl;
             std::string json_v = get_from_any(v, key);
 
-            std::string state = "__STATE__";
-            std::string to_print = json_v;
-            if(key.substr(0,state.size()) == state)
-                to_print = bt::STATE(to_print[0]-'0');
-            std::cout <<"memset " << key + " = " + to_print + ";" << std::endl;
+            eval(key + " = " + json_v + ";", true);
 
-            eval(key + " = " + json_v + ";");
-            //__simple_call("poll_changes();apply_changes();");
+            if(MEM_DEBUG) std::cout << "exited set " << key <<  std::endl;
         }
 
         std::any get(std::string const& key) override {
+            if(MEM_DEBUG) std::cout << "entered get && no exit " << std::endl;
             return get_string(key).value();
         }
 
         std::optional<double> get_double(std::string const& key) override {
+            if(MEM_DEBUG) std::cout << "entered get_double && no exit " << key << std::endl;
             rapidjson::Document d;
             d.Parse(get_string(key).value().c_str());
-            clear_duk_stack();
             if(d.IsDouble()) return d.GetDouble();
             else if(d.IsInt64()) return d.GetInt64();
             else return {};
         }
 
         std::optional<bool> get_bool(std::string const& key) override {
+            if(MEM_DEBUG) std::cout << "entered get_bool && no exit " << key << std::endl;
             rapidjson::Document d;
             d.Parse(get_string(key).value().c_str());
             if(d.IsBool()) return d.GetBool();
@@ -216,49 +225,62 @@ namespace bt {
         }
 
         std::optional<std::string> get_string(std::string const& key) override {
-            eval(R"(Duktape.enc('jc', get_var(")" + key + R"(")))");
+            if(MEM_DEBUG) std::cout << "entered get_string " << key << std::endl;
+            std::lock_guard lock(_mutex);
+            eval(R"(Duktape.enc('jc', get_var(")" + key + R"(")))", false);
+            L << "stack size " << duk_get_top(ctx) << std::endl;
             auto s =  std::string(duk_get_string(ctx, -1));
             L << s << std::endl;
+            clear_duk_stack();
+            if(MEM_DEBUG) std::cout << "exited get_string " << key << std::endl;
             return s;
         }
 
         sample get_changes(VarScope scope) override {
+            if(MEM_DEBUG) std::cout << "entered get changes " << std::endl;
+            std::lock_guard lock(_mutex);
             if(scope == OUTPUT) {
                 sample result;
                 for (auto sc: {OUTPUT, OUTPUT_NO_SEND_ZERO, PURE_OUTPUT}) {
                     auto r = get_changes(get_scope_name(sc));
                     result.insert(r.begin(), r.end());
                 }
+                if(MEM_DEBUG) std::cout << "exited get_changes " << std::endl;
                 return result;
             }
-            else return get_changes(get_scope_name(scope));
+            else {
+                if(MEM_DEBUG) std::cout << "exited get_changes" << std::endl;
+                return get_changes(get_scope_name(scope));
+            }
         }
 
         void clear_changes(VarScope scope) override {
+            if(MEM_DEBUG) std::cout << "entered clear_changes " << std::endl;
+            std::lock_guard lock(_mutex);
             if(scope == VarScope::OUTPUT) {
                 clear_changes(get_scope_name(OUTPUT));
                 clear_changes(get_scope_name(PURE_OUTPUT));
                 clear_changes(get_scope_name(OUTPUT_NO_SEND_ZERO));
             }
             else clear_changes(get_scope_name(scope));
+
+            if(MEM_DEBUG) std::cout << "exited clear_changes " << std::endl;
         }
 
         void set_expr(std::string const& key, std::string const& expr) override {
-            std::cout <<"memset " << key + " = " + expr + ";" << std::endl;
-            eval(key + " = " + expr);
-            //__simple_call("poll_changes();apply_changes();");
-            auto sample = get_changes("output");
-            L << "changed";
-            for(auto const& kv: sample) {
-                L << ' ' <<  kv.first;
-            }
-            L << std::endl;
+            if(MEM_DEBUG) std::cout << "entered set_expr "<< expr <<  std::endl;
+//            std::cout <<"memset " << key + " = " + expr + ";" << std::endl;
+            eval(key + " = " + expr, true);
+            if(MEM_DEBUG) std::cout << "exited set_expr "<< expr << std::endl;
         }
 
         bool eval_bool(std::string const& expr) override {
-            eval(expr);
-//            std::cout << "eval of " << expr << " is " << duk_get_string(ctx, -1) << std::endl;
-            return (bool)duk_get_boolean(ctx, -1);
+            if(MEM_DEBUG) std::cout << "entered eval_bool " << expr << std::endl;
+            std::lock_guard lock(_mutex);
+            eval(expr, false);
+            auto b = (bool)duk_get_boolean(ctx, -1);
+            if(MEM_DEBUG) std::cout << "exited eval_bool " << expr << std::endl;
+            return b;
         }
 
         bool has_var(std::string const& key) override {
@@ -266,10 +288,13 @@ namespace bt {
         }
 
         bool test_expr(std::string const& expr) override {
+            if(MEM_DEBUG) std::cout << "entered test_expr " << expr << std::endl;
+            std::lock_guard lock(_mutex);
             duk_push_string(ctx, expr.c_str());
             bool test = duk_peval(ctx) == 0;
-            __simple_call("poll_changes()");
-            restore_changes();
+            eval("poll_changes()", false);
+            eval("restore_changes();", false);
+            if(MEM_DEBUG) std::cout << "exited test_expr "<< expr << std::endl;
             return test;
         }
 

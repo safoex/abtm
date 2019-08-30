@@ -9,7 +9,7 @@ M = {
     }
 }
 
-
+var logger = new Duktape.Logger(null);
 
 ___scopes = {
     input: {
