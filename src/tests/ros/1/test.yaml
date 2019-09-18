@@ -4,9 +4,9 @@ common:
     online: 1
 
 variables:
-  input: ["RUNNING", "SUCCESS", "FAILED", "UNDEFINED", a,b,c,d,z, R, fibonacci_goal, time]
+  input: ["RUNNING", "SUCCESS", "FAILED", "UNDEFINED", a,b,c,d,z, R, time, feedback, status]
   output_no_send_zero: [yy,zz]
-  output: [aa,bb,cc,dd, Q]
+  output: [aa,bb,cc,dd, Q, fibonacci_goal, fibonacci_result, cancel, fibonacci_goal_id]
 
 set:
   RUNNING: 0
@@ -26,6 +26,12 @@ set:
   R: "{data: 0}"
   Q: "{}"
   time: 0
+  fibonacci_goal: ROS.actionlib_tutorials.FibonacciActionGoal()
+  fibonacci_result: ROS.actionlib_tutorials.FibonacciActionResult()
+  cancel: ROS.actionlib_msgs.GoalID()
+  feedback: ROS.actionlib_tutorials.FibonacciActionFeedback()
+  fibonacci_goal_id: ROS.actionlib_msgs.GoalID()
+  status: 0
 
 ROS:
   /first:
@@ -37,8 +43,20 @@ ROS:
     var: Q
     msg: std_msgs/String
 
+  fibonacci:
+    type: simple_action_client
+    server: /fibonacci
+    package: actionlib_tutorials
+    action: Fibonacci
+    goal: fibonacci_goal
+    feedback: feedback
+    cancel: cancel
+    result: fibonacci_result
+    goal_id: fibonacci_goal_id
+    status: status
+
 templates:
-  latch:
+  latch2:
     args:
       required: [child]
       optional:
@@ -100,7 +118,7 @@ templates:
 
     children: [$child]
 
-  latch_simple:
+  latch:
     args:
       required: [child]
 
@@ -389,36 +407,54 @@ templates:
 nodes:
   main:
     type: parallel
-    children: [fibonacci_goal, fibonacci]
+#    children: [fibonacci_goal, fibonacci]
+    children: [example]
 
-  fibonacci_goal:
+  example:
+    type: template/latch
+    child: set_waypoint
+
+  set_waypoint:
     type: action
     script: >
-      fibonacci_goal = ROS.actionlib_tutorials.FibonacciActionGoal();
-      fibonacci_goal.goal.order = 10
+      waypoint.x = 10;
+      waypoint.y = 20
 
-  fibonacci:
-    type: t/SimpleActionClient
-    on_pending: A
-    on_active: C
-    on_done: B
-    package: actionlib_tutorials
-    action: Fibonacci
-    goal: fibonacci_goal
-    client: fibonacci
-    
-  B:
-    type: action
-    script: "Q.data = 'DONE'"
+#  fibonacci_goal:
+#    type: action
+#    script: >
+#      fibonacci_goal.goal.order = 10;
+#      fibonacci_goal_id.id = '123';
+#      fibonacci_goal.goal_id = fibonacci_goal_id
+#
+#  fibonacci:
+#    type: condition
+#    R: default
+#    S: fibonacci_result.result.sequence.length > 0
 
-  A:
-    type: action
-    script: "Q.data = 'PENDING'"
 
-  C:
-    type: action
-    script: "Q.data = 'ACTIVE'"
-
+#  fibonacci:
+#    type: t/SimpleActionClient
+#    on_pending: A
+#    on_active: C
+#    on_done: B
+#    package: actionlib_tutorials
+#    action: Fibonacci
+#    goal: fibonacci_goal
+#    client: fibonacci
+#
+#  B:
+#    type: action
+#    script: "Q.data = 'DONE'"
+#
+#  A:
+#    type: action
+#    script: "Q.data = 'PENDING'"
+#
+#  C:
+#    type: action
+#    script: "Q.data = 'ACTIVE'"
+#
   
 
 
