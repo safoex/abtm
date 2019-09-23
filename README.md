@@ -1,5 +1,7 @@
 # ABTM
 Asynchronous Behavior Tree with Memory
+ 
+# Framework is under reconstruction... expected readiness date is Nov. 1, 2019.
 
 ### Requirements: 
 `libyaml-cpp` (can be installed via `apt` on Ubuntu)
