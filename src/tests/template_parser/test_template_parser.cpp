@@ -46,6 +46,12 @@ int main() {
     test_gv << builder.get_dot_description(Builder::DOT) << std::endl;
     system("dot -Tpdf test_gv_tree.txt > tree.pdf");
 
+    {
+        std::ofstream test_gv2("test_gv_tree_expanded.txt");
+        test_gv2 << tree.dot_tree_description() << std::endl;
+        system("dot -Tpdf test_gv_tree_expanded.txt > tree_expanded.pdf");
+    }
+
 //    tree.start();
 //    std::ofstream test_results("output.yaml");
 //    test_results << tp.apply_samples("../config/input.yaml");

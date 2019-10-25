@@ -119,13 +119,13 @@ templates:
     children: [$child]
 
 
+  latch:
     args:
       required: [child]
 
     var:
       __STATE__$child: [input, UNDEFINED]
 
-  latch:
     nodes:
       $name:
         type: skipper

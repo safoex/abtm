@@ -1,5 +1,5 @@
 common:
-  root_child: main
+  root_child: main2
   parameters:
     online: 1
 
@@ -53,8 +53,8 @@ templates:
 
       ~mask:
         type: condition
-        S: __STATE__$child == SUCCESS
-        F: __STATE__$child == FAILED
+        S: __STATE__$child = SUCCESS
+        F: __STATE__$child = FAILED
         R: default
 
     children: [$child]
@@ -95,6 +95,81 @@ templates:
 
     children: $children
 
+  seq_w_memory:
+    args:
+      required: [children]
+      construct:
+        _children_iter:
+          from: children
+          V: $V_iter
+      view_exclude: [children]
+
+    var:
+      ~i: [input, 0]
+
+    nodes:
+      $name:
+        type: sequence
+        children: [~fail_reset, ~reset]
+
+      ~fail_reset:
+        type: selector
+        children: [~success_reset, ~reset2_seq]
+
+      ~success_reset:
+        type: sequence
+        children: $_children_iter
+
+      ~reset:
+        type: action
+        script:
+          ~i = 0;
+
+      ~reset2_seq:
+        type: sequence
+        children: [~reset2, ~return_failure]
+
+      ~return_failure:
+        type: condition
+        F: default
+
+      ~reset2:
+        type: action
+        script:
+          ~i = 0;
+
+    unpack:
+      children:
+        nodes:
+          $V_iter:
+            type: sequence
+            children: [$V_skip, $V_forward]
+
+          $V_skip:
+            type: skipper
+            children: [$V_if, $V]
+
+          $V_if:
+            type: condition
+            R: ~i = $K
+            S: default
+
+          $V_forward:
+            type: sequence
+            children: [$V_if2, $V_inc]
+
+          $V_if2:
+            type: condition
+            R: ~i = $K
+            S: default
+
+          $V_inc:
+            type: action
+            script:
+              ~i = ~i + 1;
+
+
+
   control:
     args:
       required: [children, _type]
@@ -130,9 +205,9 @@ templates:
 
 
 nodes:
-  main:
+  main2:
     type: sequence
-    children: [S0]
+    children: [task]
 #    children: [E, L, C1, LL, C2, S0]
 #
 #  E:
@@ -193,32 +268,32 @@ nodes:
 #    S: z > 2
 #    R: default
 
-  S0:
-    type: t/seq_latches
+  task:
+    type: t/seq_w_memory
     children:
-      - A01
-      - A02
-      - A03
+      - first
+      - second
 
-  A01:
-    type: t/action_return
-    return: F
-    assign:
-      A00: 0
-
-  A02:
+  first:
     type: action
     assign:
-      A01: 0
+      A: 0
     var:
-      A01: [input, 0]
+      A: [input, 0]
 
-  A03:
+  second:
     type: action
     assign:
-      A02: 0
+      B: 1
     var:
-      A02: [input, 0]
+      B: [input, 0]
+#
+#  last:
+#    type: action
+#    assign:
+#      C: 42
+#    var:
+#      C: [input, 0]
 
 
 

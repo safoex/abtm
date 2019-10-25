@@ -9,6 +9,7 @@
 
 #include "../IOParser.h"
 #include "ROSTopic.h"
+#include "ROSSimpleActionClient.h"
 
 namespace bt {
     class ROSParser : public IOParser {
@@ -18,7 +19,7 @@ namespace bt {
     protected:
         RosbridgeWsClient rbc;
         std::string client;
-        std::vector<ROSTopic*> topics;
+        std::vector<IOBase*> topics;
     public:
         ROSParser(Builder& builder, MIMOCenter& mimo,
                 std::string const& rosbridge_port = "localhost:9090",
@@ -73,6 +74,25 @@ namespace bt {
                                 mimo.registerIOchannel(pub);
                                 topics.push_back(pub);
                             }
+                        }
+                        else if(type == "simple_action_client" || type == "sac") {
+                            std::string as_name, action, package;
+                            std::string simple_status_var;
+                            std::string goal_var, cancel_var, feedback_var, result_var;
+                            std::string goal_id_var;
+                            load<std::string>(p.second, "server", as_name);
+                            load<std::string>(p.second, "package", package);
+                            load<std::string>(p.second, "action", action);
+                            load<std::string>(p.second, "goal", goal_var);
+                            load<std::string>(p.second, "feedback", feedback_var);
+                            load<std::string>(p.second, "result", result_var);
+                            load<std::string>(p.second, "goal_id", goal_id_var);
+                            load<std::string>(p.second, "status", simple_status_var);
+                            load<std::string>(p.second, "cancel", cancel_var);
+                            auto sac = new ROSSimpleActionClient(rbc, as_name, package, action, goal_var, cancel_var,
+                                    feedback_var, result_var, simple_status_var, goal_id_var);
+                            sac->set_process(mimo.registerIOchannel(sac));
+                            topics.push_back(sac);
                         }
                         else throw std::runtime_error("Not supported handler \"" + type + "\" in ROS description");
 

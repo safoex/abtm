@@ -147,7 +147,6 @@ namespace bt {
         }
 
 
-
         void add(std::string const& key, VarScope scope, std::any const& init) override {
             std::stringstream cmd;
 

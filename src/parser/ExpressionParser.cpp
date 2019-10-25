@@ -203,7 +203,7 @@ namespace bt {
                                                                             const std::string &running) const {
         std::vector<std::string> funcs{failed, success, running};
         std::vector<Node::State> states{Node::FAILED, Node::SUCCESS, Node::RUNNING};
-        return [funcs, states, this](const Memory<double> &m) -> Node::State {
+        return  [funcs, states, this](const Memory<double> &m) -> Node::State {
             for (int i = 0; i < 3; i++) {
                 auto const &f = funcs[i];
                 if (!f.empty() && f != "default") {

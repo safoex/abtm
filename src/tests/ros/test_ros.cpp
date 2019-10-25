@@ -13,6 +13,7 @@
 #include "io/cpp/CPPFunctionParser.h"
 #include "io/offline_tests/OfflineTestChannel.h"
 #include "io/ros/ROSParser.h"
+#include "io/ros/ROSSimpleActionClient.h"
 #include <iostream>
 
 using namespace bt;
@@ -53,7 +54,7 @@ int main() {
     std::string TEST = "1";
 
     parser.loadYamlFile("../src/tests/ros/" + TEST +"/test.yaml");
-    std::cout << "loade yaml file" << std::endl;
+    std::cout << "loaded yaml file" << std::endl;
 
 
 //    parser.loadYamlFile("../config/test.yaml");
@@ -61,8 +62,11 @@ int main() {
     std::cout << "built a tree" << std::endl;
 
     std::ofstream test_gv("test_gv_tree.txt");
-//    test_gv << builder.get_dot_description(Builder::DOT) << std::endl;
-    test_gv << tree.dot_tree_description(false) << std::endl;
+    test_gv << builder.get_dot_description(Builder::DOT) << std::endl;
+    {
+        std::ofstream test_gv2("test_gv_tree_expanded.txt");
+        test_gv2 << tree.dot_tree_description(false) << std::endl;
+    }
     system("dot -Tpdf test_gv_tree.txt > tree.pdf");
 
 
