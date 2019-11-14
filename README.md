@@ -1,7 +1,7 @@
 # ABTM
 Asynchronous Behavior Tree with Memory
  
-# Framework is under reconstruction... expected readiness date is Nov. 1, 2019.
+# Active development moved to https://github.com/safoex/abtm2 !
 
 ### Requirements: 
 `libyaml-cpp` (can be installed via `apt` on Ubuntu)
